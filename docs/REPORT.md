@@ -48,6 +48,31 @@ Phát hiện quan trọng (đọc từ code UxPlay): iOS chỉ gửi keyframe l�
 | 13 | `493d4db` | Công cụ đo decode. Kết quả: pipeline video đã tối ưu sẵn (decode 3.7 ms/frame) nên không sửa |
 | 14 | `abd359b` | Cập nhật README |
 
+## Đợt 2 – Review đa agent và sửa lỗi (10/11)
+
+Mình chạy một workflow review gồm 5 reviewer, mỗi người phụ trách một mảng:
+- ghi hình;
+- cửa sổ;
+- input và điều khiển;
+- receiver và hệ thống;
+- đa luồng và chất lượng test.
+
+Mỗi lỗi tìm được đều qua **3 skeptic độc lập cố bác bỏ**, và chỉ được giữ lại khi ít nhất 2/3
+xác nhận. Kết quả: 20 cáo buộc; **18 được xác nhận** (gộp trùng còn 15, phần lớn đã tái hiện
+được bằng code chạy thật); 2 bị bác. Cáo buộc có lá phiếu bị gián đoạn thì mình tự kiểm tra
+và tái hiện được.
+
+| Commit | Đã sửa |
+|---|---|
+| `c206381` | **Ghi hình**: (1) Nếu encoder chết (thư mục Videos không ghi được, hết đĩa) thì Ctrl+R hoặc thoát app làm **treo app vĩnh viễn**, còn UI vẫn hiện REC. Giờ app tự dừng ghi và báo lỗi. (2) **File MP4 dạng fragmented**: app bị crash, bị kill hay mất điện thì chỉ mất vài giây cuối, thay vì mất trắng cả file. (3) Audio không còn bị bỏ khi encoder chậm, và không bị lệch dần. (4) Bắt đầu ghi khi màn hình đứng yên thì vẫn ghi được |
+| `3d6f09a` | **UI**: (1) Ở chế độ toàn màn hình, thanh bar không bao giờ ẩn, nên chạm vào góc trên bên phải là **thoát app**. (2) Mở cửa sổ từ khay làm mất chế độ toàn màn hình. (3) Keep-awake vẫn giữ máy thức khi iPhone đã khoá. (4) Overlay hiện số liệu cũ. (5) Nhấn chuột giữa hai lần nhanh thì mất một lần |
+| `f5fd853` | **Điều khiển**: (1) Spotlight không mở được khi đang ở app nằm ngang. (2) Dán đoạn văn dài bị timeout sau 15 giây, khiến điều khiển trông như bị mất |
+| `48d3513` | **mDNS**: bấm ẩn/hiện liên tục, hoặc đổi tên PC đúng lúc app đang khởi động, có thể để lại trạng thái sai. Giờ mọi thao tác chạy tuần tự trên 1 thread |
+| `7191587` | **Start with Windows**: (1) Hỏng nếu đường dẫn có chữ tiếng Việt (do WScript.Shell chỉ hỗ trợ ANSI). (2) Bị cũ khi di chuyển thư mục. Giờ dùng registry `HKCU\...\Run` (hỗ trợ Unicode) cùng launcher `pocketpane.pyw`, và tự cập nhật đường dẫn mỗi lần khởi động |
+| `2cf6b3e` | Thoát app đúng lúc đang khởi động thì thread airplay văng `CancelledError` |
+
+Số test tăng từ 66 lên **76, tất cả đều pass**. Lượt chạy end-to-end với iPhone giả không có lỗi.
+
 ## Cách chạy thử
 
 Python chưa có trong PATH, nên `install.bat` và `run.bat` chưa dùng được ngay. Có 2 cách:
