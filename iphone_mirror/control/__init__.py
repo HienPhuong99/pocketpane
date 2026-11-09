@@ -281,6 +281,21 @@ class Controller:
         """name: volumeUp, volumeDown, home."""
         self._put("button", name)
 
+    def back(self):
+        self._put("back")
+
+    def notification_center(self):
+        self._put("notification_center")
+
+    def control_center(self):
+        self._put("control_center")
+
+    def spotlight(self):
+        self._put("spotlight")
+
+    def lock(self):
+        self._put("lock")
+
     # ---- execution (control thread)
     def _screen_size(self, wda):
         """Screen size in points. The cached size is re-read when it does not match the
@@ -323,6 +338,8 @@ class Controller:
             wda.app_switcher()
         elif kind == "button":
             wda.press_button(a[0])
+        elif kind in ("back", "notification_center", "control_center", "spotlight", "lock"):
+            getattr(wda, kind)()
         else:
             log.warning("unknown command %s", kind)
 

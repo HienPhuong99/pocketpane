@@ -61,6 +61,8 @@ ZOOM_MS = 30
 
 # Windows virtual-key codes: shortcuts must also work with non-Latin keyboard layouts
 VK_H, VK_I, VK_J, VK_M, VK_R, VK_S, VK_U = 0x48, 0x49, 0x4A, 0x4D, 0x52, 0x53, 0x55
+VK_B, VK_K, VK_L, VK_N, VK_V = 0x42, 0x4B, 0x4C, 0x4E, 0x56
+PASTE_MAX = 4000  # characters typed by one Ctrl+V
 VK_OEM_PLUS, VK_OEM_MINUS, VK_ADD, VK_SUBTRACT = 0xBB, 0xBD, 0x6B, 0x6D
 
 GREEN, ORANGE, RED = QColor("#30d158"), QColor("#ff9f0a"), QColor("#ff453a")
@@ -886,6 +888,18 @@ class PhoneWindow(QWidget):
         self._flush_tap()
         getattr(self.ctrl, method)(*args)
 
+    def _paste(self):
+        """Type the PC clipboard's text into the focused field on the iPhone."""
+        text = QApplication.clipboard().text()
+        if not text:
+            self._hint("The clipboard has no text")
+            return
+        if len(text) > PASTE_MAX:
+            text = text[:PASTE_MAX]
+            self._hint(f"Only the first {PASTE_MAX} characters are pasted")
+        self._flush_type()  # characters typed before the paste go first
+        self._phone("type_text", text)
+
     def _gesture_begin(self, pos, double=False):
         self._g = {
             "pos0": QPointF(pos),
@@ -1020,6 +1034,12 @@ class PhoneWindow(QWidget):
         return {"home": "Home (Ctrl+H)", "pin": "Always on top", "min": "Minimize", "close": "Close"}[name]
 
     def mousePressEvent(self, e):
+        if e.button() == Qt.MiddleButton:
+            self._phone("home")
+            return
+        if e.button() == Qt.BackButton:
+            self._phone("back")
+            return
         if e.button() != Qt.LeftButton:
             return
         pos = e.position()
@@ -1130,6 +1150,18 @@ class PhoneWindow(QWidget):
                 self._phone("app_switcher")
             elif is_key(e, (Qt.Key_M,), (VK_M,)):
                 self._toggle_mute()
+            elif is_key(e, (Qt.Key_N,), (VK_N,)) and mods & Qt.ShiftModifier:
+                self._phone("control_center")
+            elif is_key(e, (Qt.Key_N,), (VK_N,)):
+                self._phone("notification_center")
+            elif is_key(e, (Qt.Key_K,), (VK_K,)):
+                self._phone("spotlight")
+            elif is_key(e, (Qt.Key_L,), (VK_L,)):
+                self._phone("lock")
+            elif is_key(e, (Qt.Key_B,), (VK_B,)):
+                self._phone("back")
+            elif is_key(e, (Qt.Key_V,), (VK_V,)):
+                self._paste()
             elif is_key(e, (Qt.Key_I,), (VK_I,)):
                 self._toggle_stats()
             elif is_key(e, (Qt.Key_R,), (VK_R,)):
@@ -1163,11 +1195,18 @@ class PhoneWindow(QWidget):
         for label, method, args in (
             ("Home\tCtrl+H", "home", ()),
             ("App Switcher\tCtrl+J", "app_switcher", ()),
+            ("Back\tCtrl+B", "back", ()),
+            ("Spotlight\tCtrl+K", "spotlight", ()),
+            ("Notification Center\tCtrl+N", "notification_center", ()),
+            ("Control Center\tCtrl+Shift+N", "control_center", ()),
+            ("Lock Screen\tCtrl+L", "lock", ()),
             ("Volume Up\tCtrl+Up", "button", ("volumeUp",)),
             ("Volume Down\tCtrl+Down", "button", ("volumeDown",)),
         ):
             a = m.addAction(label, lambda method=method, args=args: self._phone(method, *args))
             a.setEnabled(ready)
+        paste = m.addAction("Paste PC Clipboard\tCtrl+V", self._paste)
+        paste.setEnabled(ready)
         m.addSeparator()
         top = QAction("Always on Top", m, checkable=True, checked=self.settings.get("always_on_top", True))
         top.triggered.connect(lambda: self._button("pin"))

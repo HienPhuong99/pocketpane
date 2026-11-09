@@ -255,6 +255,30 @@ class WDAClientTests(unittest.TestCase):
         method, path, body = self.mock.find("POST", "/wda/pressButton")[-1]
         self.assertEqual((path, body), ("/session/S1/wda/pressButton", {"name": "volumeUp"}))
 
+    def test_system_gestures(self):
+        def moves():
+            m = [s for s in self.mock.pointer_actions()[-1]["actions"] if s["type"] == "pointerMove"]
+            return (m[0]["x"], m[0]["y"]), (m[1]["x"], m[1]["y"])
+
+        self.wda.back()  # 390 x 844 pt, Face ID shape
+        self.assertEqual(moves(), ((1, 422), (292, 422)))
+        self.wda.notification_center()
+        self.assertEqual(moves(), ((98, 1), (98, 506)))
+        self.wda.control_center()  # top-right corner on Face ID iPhones
+        self.assertEqual(moves(), ((351, 1), (351, 464)))
+        with mock.patch.object(control.wda.time, "sleep"):
+            self.wda.spotlight()
+        self.assertTrue(self.mock.find("POST", "/wda/homescreen"))
+        self.assertEqual(moves(), ((195, 253), (195, 523)))
+        self.wda.lock()
+        self.assertTrue(self.mock.find("POST", "/wda/lock"))
+
+    def test_control_center_on_home_button_iphones(self):
+        self.mock.size = (375, 667)
+        self.wda.control_center()  # swipe up from the bottom edge
+        steps = [s for s in self.mock.pointer_actions()[-1]["actions"] if s["type"] == "pointerMove"]
+        self.assertEqual((steps[0]["y"], steps[1]["y"]), (666, 300))
+
     def test_session_recreated_after_invalid_session(self):
         self.wda.tap(1, 1)
         self.mock.expire_next = True
@@ -420,6 +444,17 @@ class ControllerTests(unittest.TestCase):
         ctrl.tap(0.5, 0.5)  # ignored when not READY
         time.sleep(0.3)
         self.assertEqual(len(self.mock.pointer_actions()), n)
+
+    def test_system_commands_reach_wda(self):
+        ctrl = self.controller()
+        ctrl.start()
+        self.wait_state(ctrl, READY)
+        n = len(self.mock.pointer_actions())
+        for cmd in (ctrl.back, ctrl.notification_center, ctrl.control_center):
+            cmd()
+        self.assertTrue(wait_for(lambda: len(self.mock.pointer_actions()) >= n + 3))
+        ctrl.lock()
+        self.assertTrue(wait_for(lambda: self.mock.find("POST", "/wda/lock")))
 
     def test_double_tap(self):
         ctrl = self.controller()

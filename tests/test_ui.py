@@ -124,6 +124,51 @@ class StreamInfoTest(unittest.TestCase):
         self.assertIn("next time", win._bar_label())
 
 
+class FakeController:
+    """Records the commands the window sends; always READY."""
+
+    def __init__(self):
+        self.calls = []
+        self.active = True
+        self.screen_aspect = None
+
+    def snapshot(self):
+        return ui.READY, "ready", 1
+
+    def __getattr__(self, name):
+        return lambda *a: self.calls.append((name, *a))
+
+
+class ControlShortcutsTest(unittest.TestCase):
+    def window(self):
+        win = make_window()
+        win.ctrl = FakeController()
+        win.on_control(ui.READY, "ready")
+        return win
+
+    def test_keys_and_mouse_buttons(self):
+        win = self.window()
+        for key, mods in ((Qt.Key_N, Qt.ControlModifier), (Qt.Key_N, Qt.ControlModifier | Qt.ShiftModifier),
+                          (Qt.Key_K, Qt.ControlModifier), (Qt.Key_L, Qt.ControlModifier),
+                          (Qt.Key_B, Qt.ControlModifier)):
+            QTest.keyClick(win, key, mods)
+        QTest.mouseClick(win, Qt.MiddleButton, pos=win.phone_rect().center().toPoint())
+        names = [c[0] for c in win.ctrl.calls]
+        self.assertEqual(names, ["notification_center", "control_center", "spotlight", "lock", "back", "home"])
+
+    def test_paste_types_the_clipboard(self):
+        win = self.window()
+        QApplication.clipboard().setText("xin chào")
+        QTest.keyClick(win, Qt.Key_V, Qt.ControlModifier)
+        self.assertIn(("type_text", "xin chào"), win.ctrl.calls)
+
+    def test_paste_is_limited(self):
+        win = self.window()
+        QApplication.clipboard().setText("a" * (ui.PASTE_MAX + 50))
+        win._paste()
+        self.assertEqual(len(win.ctrl.calls[-1][1]), ui.PASTE_MAX)
+
+
 class TrayStartTest(unittest.TestCase):
     def test_hidden_window_shows_when_an_iphone_connects(self):
         win = make_window()

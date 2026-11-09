@@ -12,6 +12,7 @@ import http.client
 import json
 import logging
 import threading
+import time
 import urllib.parse
 
 log = logging.getLogger(__name__)
@@ -255,6 +256,32 @@ class WDA:
             return
         w, h = self.window_size()
         self.swipe(w / 2, h - 2, w / 2, h * 0.62, duration_ms=280, hold_end_ms=450)
+
+    def back(self):
+        """iOS 'back' gesture: a swipe from the left edge to the right."""
+        w, h = self.window_size()
+        self.swipe(1, h * 0.5, w * 0.75, h * 0.5, duration_ms=250)
+
+    def notification_center(self):
+        """Swipe down from the top edge, left of the notch."""
+        w, h = self.window_size()
+        self.swipe(w * 0.25, 1, w * 0.25, h * 0.6, duration_ms=300)
+
+    def control_center(self):
+        """Face ID iPhones: swipe down from the top-right corner; Home-button iPhones: swipe up
+        from the bottom edge."""
+        w, h = self.window_size()
+        if self.has_home_button():
+            self.swipe(w / 2, h - 1, w / 2, h * 0.45, duration_ms=300)
+        else:
+            self.swipe(w * 0.9, 1, w * 0.9, h * 0.55, duration_ms=300)
+
+    def spotlight(self):
+        """Go to the Home Screen and swipe down in the middle, which opens Spotlight search."""
+        self.home()
+        time.sleep(0.6)  # let the Home Screen animation finish, or the swipe is lost
+        w, h = self.window_size()
+        self.swipe(w / 2, h * 0.3, w / 2, h * 0.62, duration_ms=250)
 
     def double_press_home(self):
         """Press the Home button twice quickly (opens the App Switcher on Home-button iPhones)."""
