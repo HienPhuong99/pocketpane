@@ -24,6 +24,7 @@ HID_PAGE_CONSUMER, HID_USAGE_HOME = 0x0C, 0x40
 # iPhones with a Home button have a 16:9 screen (e.g. 375 x 667 pt); Face ID iPhones are
 # about 19.5:9 (e.g. 393 x 852 pt).
 HOME_BUTTON_MAX_ASPECT = 2.0
+TYPING_KEYS_PER_S = 40  # conservative: WDA's default maxTypingFrequency is 60
 
 
 class WDAError(Exception):
@@ -280,7 +281,7 @@ class WDA:
         """Go to the Home Screen and swipe down in the middle, which opens Spotlight search."""
         self.home()
         time.sleep(0.6)  # let the Home Screen animation finish, or the swipe is lost
-        w, h = self.window_size()
+        w, h = self.window_size(refresh=True)  # the Home Screen is portrait, the app may not have been
         self.swipe(w / 2, h * 0.3, w / 2, h * 0.62, duration_ms=250)
 
     def double_press_home(self):
@@ -304,7 +305,9 @@ class WDA:
     def type_text(self, text: str):
         """Type into the focused field. '\\b' deletes a character, '\\n' presses Return."""
         if text:
-            self._session("POST", "/wda/keys", {"value": list(text)})
+            # WDA types about 60 keys/s and answers only when done: allow for long pastes
+            timeout = self.timeout + len(text) / TYPING_KEYS_PER_S
+            self._session("POST", "/wda/keys", {"value": list(text)}, timeout=timeout)
 
     def press_button(self, name: str):
         """name: home, volumeUp, volumeDown (and on newer iOS: action, camera)."""

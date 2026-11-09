@@ -273,6 +273,26 @@ class WDAClientTests(unittest.TestCase):
         self.wda.lock()
         self.assertTrue(self.mock.find("POST", "/wda/lock"))
 
+    def test_spotlight_from_a_landscape_app_uses_the_portrait_home_screen(self):
+        self.mock.size = (844, 390)
+        self.wda.window_size()  # cached while the app was landscape
+
+        def home_rotates(_):
+            self.mock.size = (390, 844)
+
+        with mock.patch.object(control.wda.time, "sleep", side_effect=home_rotates):
+            self.wda.spotlight()
+        m = [s for s in self.mock.pointer_actions()[-1]["actions"] if s["type"] == "pointerMove"]
+        self.assertEqual((m[0]["x"], m[0]["y"]), (195, 253))
+
+    def test_long_text_gets_a_longer_timeout(self):
+        with mock.patch.object(self.wda, "_session") as session:
+            self.wda.type_text("a" * 2000)
+            self.wda.type_text("hi")
+        long_, short = (c.kwargs["timeout"] for c in session.call_args_list)
+        self.assertGreaterEqual(long_, 2000 / 60)
+        self.assertAlmostEqual(short, self.wda.timeout, delta=0.1)
+
     def test_control_center_on_home_button_iphones(self):
         self.mock.size = (375, 667)
         self.wda.control_center()  # swipe up from the bottom edge

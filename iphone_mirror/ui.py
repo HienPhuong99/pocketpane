@@ -62,7 +62,7 @@ ZOOM_MS = 30
 # Windows virtual-key codes: shortcuts must also work with non-Latin keyboard layouts
 VK_H, VK_I, VK_J, VK_M, VK_R, VK_S, VK_U = 0x48, 0x49, 0x4A, 0x4D, 0x52, 0x53, 0x55
 VK_B, VK_K, VK_L, VK_N, VK_V = 0x42, 0x4B, 0x4C, 0x4E, 0x56
-PASTE_MAX = 4000  # characters typed by one Ctrl+V
+PASTE_MAX = 2000  # characters typed by one Ctrl+V (WDA types ~60/s: about half a minute)
 VK_OEM_PLUS, VK_OEM_MINUS, VK_ADD, VK_SUBTRACT = 0xBB, 0xBD, 0x6B, 0x6D
 
 GREEN, ORANGE, RED = QColor("#30d158"), QColor("#ff9f0a"), QColor("#ff453a")

@@ -130,7 +130,7 @@ line from its start to its end.
 | Ctrl + N | Notification Center |
 | Ctrl + Shift + N | Control Center |
 | Ctrl + L | Lock the iPhone |
-| Ctrl + V | Type the PC clipboard text into the focused field (up to 4000 characters) |
+| Ctrl + V | Type the PC clipboard text into the focused field (up to 2000 characters) |
 | Ctrl + Up / Ctrl + Down | iPhone volume up / down |
 | Ctrl + M | Mute / unmute the sound on the PC |
 | Ctrl + U | Turn USB control on / off |
