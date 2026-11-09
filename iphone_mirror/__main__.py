@@ -10,7 +10,7 @@ from PySide6.QtCore import QTimer
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication
 
-from . import net
+from . import autostart, net
 from .airplay import Receiver
 from .config import APP_DIR, APP_NAME, LOG_FILE, SETTINGS_FILE, Settings, migrate_old_settings
 from .control import OFF, Controller
@@ -81,6 +81,7 @@ def main():
 
     if not args.local:
         migrate_old_settings()
+        autostart.refresh()
     settings = Settings(LOCAL_SETTINGS if args.local else SETTINGS_FILE)
     logging.info(
         "starting, name=%r, port=%d, local=%s, pid=%d", settings["name"], net.PORT, args.local, os.getpid()

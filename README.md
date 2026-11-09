@@ -418,7 +418,8 @@ python tools/gen_fairplay.py path\to\UxPlay\lib
 | `iphone_mirror/config.py` | Settings and receiver identity |
 | `iphone_mirror/ui.py` | The iPhone-shaped window |
 | `iphone_mirror/record.py` | Screen recording to MP4 |
-| `iphone_mirror/autostart.py` | Start with Windows (Startup folder shortcut) |
+| `iphone_mirror/autostart.py` | Start with Windows (`HKCU\...\Run` value, kept up to date if the folder moves) |
+| `pocketpane.pyw` | Console-less launcher that works from any folder (used by Start with Windows) |
 | `iphone_mirror/control/` | WebDriverAgent client and USB bring-up |
 | `tests/` | FairPlay, WDA, recording and window tests (`python -m pytest tests`) |
 | `tools/` | Simulated iPhone, FairPlay table generator, paint and decode benchmarks |

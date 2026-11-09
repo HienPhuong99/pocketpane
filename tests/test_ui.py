@@ -219,14 +219,30 @@ class TrayStartTest(unittest.TestCase):
         self.assertTrue(win.isVisible())
         win.close()
 
-    def test_autostart_shortcut_round_trip(self):
+    def test_autostart_registry_round_trip_with_a_unicode_path(self):
         from iphone_mirror import autostart
 
-        with tempfile.TemporaryDirectory() as d:
-            self.assertTrue(autostart.set_enabled(True, Path(d)))
-            self.assertTrue(autostart.enabled(Path(d)))
-            self.assertFalse(autostart.set_enabled(False, Path(d)))
-            self.assertFalse(autostart.enabled(Path(d)))
+        name = "PocketPane-test"
+        moved = Path("C:/Users/Phương/Ứng dụng/pocketpane")
+        try:
+            with mock.patch.object(autostart, "ROOT", moved):
+                self.assertTrue(autostart.set_enabled(True, name))
+                self.assertIn("Phương\\Ứng dụng\\pocketpane\\pocketpane.pyw", autostart.current(name))
+            autostart.refresh(name)  # the folder "moved" back: the command follows it
+            self.assertEqual(autostart.current(name), autostart.command())
+            self.assertFalse(autostart.set_enabled(False, name))
+            self.assertIsNone(autostart.current(name))
+        finally:
+            autostart.set_enabled(False, name)
+
+    def test_launcher_runs_from_another_folder(self):
+        import subprocess
+
+        root = Path(__file__).resolve().parent.parent
+        out = subprocess.run([sys.executable, str(root / "pocketpane.pyw"), "--help"], cwd=tempfile.gettempdir(),
+                             capture_output=True, text=True, timeout=120)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertIn("--tray", out.stdout)
 
 
 if __name__ == "__main__":
