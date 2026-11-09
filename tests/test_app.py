@@ -175,6 +175,11 @@ class AdvertiseTest(unittest.TestCase):
             rx.set_advertised(True)
             time.sleep(1.5)
             self.assertTrue(seen())
+            for on in (False, True, False, True, False):  # quick clicks: the last one wins
+                rx.set_advertised(on)
+            rx._mdns.submit(lambda: None).result(timeout=20)  # wait for the queued changes
+            self.assertFalse(seen())
+            self.assertFalse(rx.advertised)
         finally:
             rx.stop()
             net.PORT = old_port

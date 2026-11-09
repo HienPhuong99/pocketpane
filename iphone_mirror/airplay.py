@@ -1,5 +1,6 @@
 """AirPlay screen-mirroring receiver: RTSP control connection and session setup."""
 import asyncio
+import concurrent.futures
 import hashlib
 import logging
 import plistlib
@@ -387,6 +388,9 @@ class Receiver:
         self.port = 0
         self.advertiser = None
         self.advertised = True  # False: hidden from Screen Mirroring (mDNS announcement withdrawn)
+        # every mDNS change runs on this one thread, in order: start, hide, show and rename
+        # must never overlap (Advertiser is not thread-safe) or finish out of order
+        self._mdns = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="mdns")
         self._mirror_owner = None
         self._thread = None
         self._server = None
@@ -485,12 +489,23 @@ class Receiver:
             return
         self.advertiser = discovery.Advertiser(self.settings, self.pk_hex, self.port)
         try:
-            await self.loop.run_in_executor(None, self.advertiser.start)
+            await self.loop.run_in_executor(self._mdns, self._sync_advertisement)
         except Exception:
             log.exception("mDNS advertisement failed")
             self.emit("error", message="Could not announce this PC on the network (mDNS).")
             return
-        self.emit("listening", name=self.settings["name"], addresses=self.advertiser.addresses, port=self.port)
+        self.emit("listening", name=self.settings["name"], addresses=self._addresses(), port=self.port)
+
+    def _addresses(self):
+        return self.advertiser.addresses or discovery.local_ipv4_addresses()
+
+    def _sync_advertisement(self, restart=False):
+        """Make the mDNS announcement match self.advertised (mDNS thread only). The wanted state is
+        read when this runs, so quick hide/show clicks always end in the last one."""
+        if restart or not self.advertised:
+            self.advertiser.stop()
+        if self.advertised:
+            self.advertiser.start()
 
     def rename(self, name: str):
         """Change the name shown on the iPhone and re-announce the receiver."""
@@ -501,42 +516,38 @@ class Receiver:
 
         def reannounce():
             try:
-                self.advertiser.stop()
-                if self.advertised:
-                    self.advertiser.start()
-                self.emit("listening", name=name, addresses=self.advertiser.addresses, port=self.port)
+                self._sync_advertisement(restart=True)
+                self.emit("listening", name=name, addresses=self._addresses(), port=self.port)
             except Exception:
                 log.exception("re-announce failed")
 
-        self.loop.call_soon_threadsafe(lambda: self.loop.run_in_executor(None, reannounce))
+        self._mdns.submit(reannounce)
 
     def set_advertised(self, on: bool):
         """Show or hide this PC in the iPhone's Screen Mirroring list. A session that is already
         running is not affected."""
         self.advertised = on
-        if not self.loop or not self.advertiser:
-            return
+        if not self.advertiser:
+            return  # still starting up: the first announcement reads the flag
 
         def apply():
             try:
-                if on:
-                    self.advertiser.start()
-                else:
-                    self.advertiser.stop()
-                log.info("receiver %s", "announced" if on else "hidden")
+                self._sync_advertisement()
+                log.info("receiver %s", "announced" if self.advertised else "hidden")
             except Exception:
                 log.exception("could not change the announcement")
 
-        self.loop.call_soon_threadsafe(lambda: self.loop.run_in_executor(None, apply))
+        self._mdns.submit(apply)
 
     def stop(self):
         self.stop_recording()
         logging.getLogger("asyncio").setLevel(logging.CRITICAL)  # pending accept tasks at exit are harmless
         if self.advertiser:
-            try:
-                self.advertiser.stop()
+            try:  # on the mDNS thread, after anything still queued there
+                self._mdns.submit(self.advertiser.stop).result(timeout=3)
             except Exception:
                 pass
+        self._mdns.shutdown(wait=False, cancel_futures=True)
         if self.player:
             self.player.close()
         self.decoder.stop()
