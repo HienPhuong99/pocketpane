@@ -314,6 +314,7 @@ class PhoneWindow(QWidget):
             self.setMinimumSize(0, 0)
             self.setMaximumSize(16777215, 16777215)  # QWIDGETSIZE_MAX: undo setFixedSize
             self.showFullScreen()
+            self.hover = False  # shown again when the mouse goes to the top
             self._hint("Full screen - press F11 or Esc to leave")
         self._shadow = None
         self._update_target()
@@ -375,9 +376,10 @@ class PhoneWindow(QWidget):
                 self.state = "connecting"
         elif event == "paused":
             self.state = "paused"
+            self.fps = self.kbps = 0.0  # no frames while the iPhone is locked
         elif event == "mirror_stopped":
             self.state = "waiting"
-            self._update_awake()
+            self.fps = self.kbps = 0.0
             self.image = None
             self._array = None
             self.src_size = None
@@ -393,6 +395,7 @@ class PhoneWindow(QWidget):
         elif event == "error":
             self.state = "error"
             self.info = dict(self.info, message=info.get("message", ""))
+        self._update_awake()  # only while frames arrive: not when paused (iPhone locked) or stopped
         self.update()
 
     def on_control(self, state, message):
@@ -830,7 +833,7 @@ class PhoneWindow(QWidget):
     def _flash_bar(self, seconds=HINT_S):
         """Show the top bar for a moment (status changes, hints) even if the mouse is elsewhere."""
         self.hover = True
-        if not self.underMouse():
+        if self.fullscreen or not self.underMouse():  # in full screen the mouse is always over us
             self._hide_bar.start(int(seconds * 1000))
         self._update_anim()
         self.update()
@@ -1005,6 +1008,8 @@ class PhoneWindow(QWidget):
 
     # ------------------------------------------------------------ input
     def enterEvent(self, e):
+        if self.fullscreen:
+            return  # the window covers the screen: the bar follows the mouse (mouseMoveEvent)
         self._hide_bar.stop()
         self.hover = True
         self._update_anim()
@@ -1073,6 +1078,14 @@ class PhoneWindow(QWidget):
         if self.drag_offset is not None and e.buttons() & Qt.LeftButton:
             self.move(e.globalPosition().toPoint() - self.drag_offset)
             return
+        if self.fullscreen:
+            near = pos.y() <= self._bar_rect().bottom() + 24
+            if near:
+                self._hide_bar.stop()
+            if near != self.hover:
+                self.hover = near
+                self._update_anim()
+                self.update()
         name = self._button_at(pos) if self.hover else None
         if name != self._hover_btn:
             self._hover_btn = name
@@ -1090,6 +1103,9 @@ class PhoneWindow(QWidget):
             self._save_pos()
 
     def mouseDoubleClickEvent(self, e):
+        if e.button() in (Qt.MiddleButton, Qt.BackButton):
+            self.mousePressEvent(e)  # a quick second press is a press of its own
+            return
         if e.button() != Qt.LeftButton:
             return
         pos = e.position()
@@ -1437,6 +1453,9 @@ class PhoneWindow(QWidget):
         self._tray_menu = menu  # the tray does not take ownership of the menu
 
     def _show_front(self):
-        self.showNormal()
+        if self.fullscreen:
+            self.showFullScreen()
+        else:
+            self.showNormal()
         self.raise_()
         self.activateWindow()

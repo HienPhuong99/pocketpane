@@ -96,6 +96,17 @@ class FullScreenTest(unittest.TestCase):
         self.assertEqual(win.rx.decoder.target, (round(r.width() * win.devicePixelRatioF()),
                                                  round(r.height() * win.devicePixelRatioF())))
         win.set_phone_height(400)  # ignored in full screen
+        QTest.mouseMove(win, r.center().toPoint())
+        self.assertFalse(win.hover)  # the bar is hidden away from the top...
+        close = win._buttons()["close"].center().toPoint()
+        with mock.patch.object(ui.QApplication, "quit") as quit_:
+            QTest.mouseClick(win, Qt.LeftButton, pos=close)  # ...so its Close button is not there
+            quit_.assert_not_called()
+        QTest.mouseMove(win, close)
+        self.assertTrue(win.hover)  # mouse at the top: bar shown
+        win._show_front()  # e.g. from the tray: stays in full screen
+        app.processEvents()
+        self.assertTrue(win.isFullScreen())
         QTest.keyClick(win, Qt.Key_Escape)
         app.processEvents()
         self.assertFalse(win.fullscreen)
@@ -108,11 +119,16 @@ class WindowOptionsTest(unittest.TestCase):
         with mock.patch.object(ui, "keep_awake") as awake:
             win = make_window()  # make_window delivers a first frame: mirroring
             awake.assert_called_once_with(True)
+            win.on_event("paused", {})  # iPhone locked: no frames, let the PC sleep
+            awake.assert_called_with(False)
+            win.on_frame(np.zeros((128, 60, 4), dtype=np.uint8), 60, 128)  # unlocked again
+            awake.assert_called_with(True)
             win.on_event("mirror_stopped", {})
             awake.assert_called_with(False)
+            awake.reset_mock()
             win.settings["keep_awake"] = False
             win.on_frame(np.zeros((128, 60, 4), dtype=np.uint8), 60, 128)
-            self.assertEqual(awake.call_count, 2)  # disabled: no new request
+            awake.assert_not_called()  # disabled: no new request
 
     def test_opacity_is_applied_and_saved(self):
         win = make_window()
@@ -174,6 +190,13 @@ class ControlShortcutsTest(unittest.TestCase):
         QTest.mouseClick(win, Qt.MiddleButton, pos=win.phone_rect().center().toPoint())
         names = [c[0] for c in win.ctrl.calls]
         self.assertEqual(names, ["notification_center", "control_center", "spotlight", "lock", "back", "home"])
+
+    def test_quick_middle_clicks_are_two_home_presses(self):
+        win = self.window()
+        pos = win.phone_rect().center().toPoint()
+        QTest.mouseClick(win, Qt.MiddleButton, pos=pos)  # Windows: press, release,
+        QTest.mouseDClick(win, Qt.MiddleButton, pos=pos)  # then a double-click event for the 2nd press
+        self.assertEqual([c[0] for c in win.ctrl.calls], ["home", "home"])
 
     def test_paste_types_the_clipboard(self):
         win = self.window()
