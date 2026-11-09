@@ -497,6 +497,13 @@ class Receiver:
             async def shutdown():
                 if self._server:
                     self._server.close()
+                # let open connections clean up while the loop and the UI are still alive;
+                # otherwise their coroutines are finalised later and emit into deleted objects
+                tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+                for t in tasks:
+                    t.cancel()
+                if tasks:
+                    await asyncio.wait(tasks, timeout=1.5)
                 self.loop.stop()
 
             asyncio.run_coroutine_threadsafe(shutdown(), self.loop)
