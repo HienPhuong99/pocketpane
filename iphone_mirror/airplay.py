@@ -472,6 +472,8 @@ class Receiver:
         try:
             self.loop.run_until_complete(self._main())
             self.loop.run_forever()
+        except asyncio.CancelledError:
+            pass  # quit while start-up was still announcing the receiver: shutdown cancelled _main
         except Exception:
             log.exception("receiver crashed")
             self.emit("error", message="The AirPlay server crashed. See the log for details.")

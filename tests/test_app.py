@@ -139,6 +139,35 @@ class RecorderTest(unittest.TestCase):
             self.assertEqual(rec.frames, 1)
 
 
+class ShutdownTest(unittest.TestCase):
+    def test_quit_during_startup_announcement_is_clean(self):
+        import threading
+
+        from iphone_mirror import discovery, net
+        from iphone_mirror.airplay import Receiver
+
+        slow_start = discovery.Advertiser.start
+
+        def slow(self):
+            time.sleep(2)
+            slow_start(self)
+
+        errors = []
+        old_hook, threading.excepthook = threading.excepthook, lambda a: errors.append(a.exc_type.__name__)
+        old_port, net.PORT = net.PORT, 7165
+        try:
+            with mock.patch.object(discovery.Advertiser, "start", slow):
+                rx = Receiver(config.Settings(Path(tempfile.mkdtemp()) / "s.json"), lambda *a: None, lambda *a: None)
+                rx.start()
+                time.sleep(0.8)
+                rx.stop()
+                rx._thread.join(5)
+        finally:
+            threading.excepthook = old_hook
+            net.PORT = old_port
+        self.assertEqual(errors, [])
+
+
 class AdvertiseTest(unittest.TestCase):
     """Real mDNS on this machine: skipped where multicast does not work."""
 
