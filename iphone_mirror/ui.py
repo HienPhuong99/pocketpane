@@ -8,6 +8,7 @@ phone area goes to the iPhone. Click = tap, press and hold = long press, drag =
 swipe, double-click = double tap, wheel = scroll, typing = text. The window is
 then moved by dragging the top bar or with Alt+drag anywhere.
 """
+import functools
 import logging
 import math
 import os
@@ -69,6 +70,23 @@ class Bridge(QObject):
     frame = Signal(object, int, int)
     event = Signal(str, dict)
     control = Signal(str, str)  # Controller.on_state(state, message)
+
+
+@functools.lru_cache(maxsize=64)
+def font(size: int, bold: bool = False) -> QFont:
+    """Fonts and their metrics are cached: resolving a font (and measuring text with a new
+    QFontMetrics) costs several milliseconds on Windows, far too much to do every frame."""
+    return QFont("Segoe UI", size, QFont.DemiBold if bold else QFont.Normal)
+
+
+@functools.lru_cache(maxsize=64)
+def metrics(size: int, bold: bool = False) -> QFontMetrics:
+    return QFontMetrics(font(size, bold))
+
+
+@functools.lru_cache(maxsize=256)
+def text_width(size: int, bold: bool, text: str) -> int:
+    return metrics(size, bold).horizontalAdvance(text)
 
 
 def app_icon(size: int = 64) -> QIcon:
@@ -172,6 +190,7 @@ class PhoneWindow(QWidget):
         self._type_timer = QTimer(self, singleShot=True, interval=TYPE_BATCH_MS, timeout=self._flush_type)
         self._effects = []  # touch feedback: dict(kind, a, b, t, life), positions as fractions
         self._anim = QTimer(self, interval=16, timeout=self._tick)
+        self._shadow = None  # ((width, height, dpr), QPixmap)
 
         screen = QApplication.primaryScreen().availableGeometry()
         ph = int(settings.get("phone_height") or 0) or int(screen.height() * 0.72)
@@ -353,12 +372,7 @@ class PhoneWindow(QWidget):
         rect = self.phone_rect()
         r = self.corner_radius()
 
-        # soft shadow
-        p.setPen(Qt.NoPen)
-        for i in range(SHADOW, 0, -2):
-            a = int(34 * (1 - i / SHADOW) ** 2) + 2
-            p.setBrush(QColor(0, 0, 0, a))
-            p.drawRoundedRect(rect.adjusted(-i, -i + 6, i, i + 6), r + i, r + i)
+        p.drawPixmap(0, 0, self._shadow_pixmap(rect, r))
 
         if self.image is not None and self.state in ("mirroring", "paused", "connecting"):
             brush = QBrush(self.image)
@@ -388,6 +402,25 @@ class PhoneWindow(QWidget):
         if self.hover:
             self._paint_bar(p)
         p.end()
+
+    def _shadow_pixmap(self, rect, r) -> QPixmap:
+        """Soft drop shadow, drawn once per window size instead of every frame."""
+        dpr = self.devicePixelRatioF()
+        key = (self.width(), self.height(), dpr)
+        if self._shadow is None or self._shadow[0] != key:
+            pm = QPixmap(round(self.width() * dpr), round(self.height() * dpr))
+            pm.setDevicePixelRatio(dpr)
+            pm.fill(Qt.transparent)
+            sp = QPainter(pm)
+            sp.setRenderHint(QPainter.Antialiasing)
+            sp.setPen(Qt.NoPen)
+            for i in range(SHADOW, 0, -2):
+                a = int(34 * (1 - i / SHADOW) ** 2) + 2
+                sp.setBrush(QColor(0, 0, 0, a))
+                sp.drawRoundedRect(rect.adjusted(-i, -i + 6, i, i + 6), r + i, r + i)
+            sp.end()
+            self._shadow = (key, pm)
+        return self._shadow[1]
 
     def _paint_placeholder(self, p, rect, r):
         g = QLinearGradient(rect.topLeft(), rect.bottomRight())
@@ -429,8 +462,7 @@ class PhoneWindow(QWidget):
 
         addrs = self.info.get("addresses") or []
         if addrs:
-            f = QFont("Segoe UI", 8)
-            p.setFont(f)
+            p.setFont(font(8))
             p.setPen(QColor(255, 255, 255, 90))
             p.drawText(
                 QRectF(rect.x(), rect.bottom() - rect.width() * 0.16, rect.width(), 20),
@@ -456,13 +488,11 @@ class PhoneWindow(QWidget):
 
     def _center_text(self, p, rect, title, sub):
         w = rect.width()
-        tf = QFont("Segoe UI Semibold", max(11, int(w * 0.055)))
-        p.setFont(tf)
+        p.setFont(font(max(11, int(w * 0.055)), True))
         p.setPen(QColor(255, 255, 255, 240))
         y = rect.y() + rect.height() * 0.5
         p.drawText(QRectF(rect.x() + w * 0.08, y, w * 0.84, w * 0.12), Qt.AlignHCenter | Qt.AlignTop, title)
-        sf = QFont("Segoe UI", max(9, int(w * 0.034)))
-        p.setFont(sf)
+        p.setFont(font(max(9, int(w * 0.034))))
         p.setPen(QColor(255, 255, 255, 170))
         p.drawText(
             QRectF(rect.x() + w * 0.1, y + w * 0.12, w * 0.8, rect.height() * 0.3),
@@ -578,14 +608,13 @@ class PhoneWindow(QWidget):
         p.drawRoundedRect(b, b.height() / 2, b.height() / 2)
         btn = self._buttons()
 
-        font = QFont("Segoe UI Semibold", 9)
-        p.setFont(font)
+        bar_font = (9, True)
+        p.setFont(font(*bar_font))
         text_rect = QRectF(b.x() + 14, b.y(), max(0.0, btn["control"].left() - b.x() - 18), b.height())
-        fm = QFontMetrics(font)
         labels = self._bar_labels()
-        label = next((t for t in labels if fm.horizontalAdvance(t) <= text_rect.width()), None)
+        label = next((t for t in labels if text_width(*bar_font, t) <= text_rect.width()), None)
         if label is None:
-            label = fm.elidedText(labels[-1], Qt.ElideRight, int(text_rect.width()))
+            label = metrics(*bar_font).elidedText(labels[-1], Qt.ElideRight, int(text_rect.width()))
         p.setPen(QColor(255, 255, 255, 220))
         p.drawText(text_rect, Qt.AlignVCenter | Qt.AlignLeft, label)
 
