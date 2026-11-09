@@ -84,5 +84,23 @@ class FullScreenTest(unittest.TestCase):
         win.close()
 
 
+class WindowOptionsTest(unittest.TestCase):
+    def test_keep_awake_only_while_mirroring(self):
+        with mock.patch.object(ui, "keep_awake") as awake:
+            win = make_window()  # make_window delivers a first frame: mirroring
+            awake.assert_called_once_with(True)
+            win.on_event("mirror_stopped", {})
+            awake.assert_called_with(False)
+            win.settings["keep_awake"] = False
+            win.on_frame(np.zeros((128, 60, 4), dtype=np.uint8), 60, 128)
+            self.assertEqual(awake.call_count, 2)  # disabled: no new request
+
+    def test_opacity_is_applied_and_saved(self):
+        win = make_window()
+        win._set_opacity(0.5)
+        self.assertAlmostEqual(win.windowOpacity(), 0.5, places=2)
+        self.assertEqual(Settings(win.settings.path)["opacity"], 0.5)
+
+
 if __name__ == "__main__":
     unittest.main()

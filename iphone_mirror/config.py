@@ -25,6 +25,8 @@ DEFAULTS = {
     "fps": 60,
     "audio": True,
     "always_on_top": True,
+    "opacity": 1.0,  # window opacity, 0.3 .. 1
+    "keep_awake": True,  # keep the PC (and its display) from sleeping while mirroring
     # window geometry (logical pixels); 0 = automatic
     "x": None,
     "y": None,

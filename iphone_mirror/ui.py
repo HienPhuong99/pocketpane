@@ -12,6 +12,7 @@ import functools
 import logging
 import math
 import os
+import ctypes
 import time
 from pathlib import Path
 
@@ -62,6 +63,20 @@ VK_H, VK_J, VK_M, VK_R, VK_S, VK_U = 0x48, 0x4A, 0x4D, 0x52, 0x53, 0x55
 VK_OEM_PLUS, VK_OEM_MINUS, VK_ADD, VK_SUBTRACT = 0xBB, 0xBD, 0x6B, 0x6D
 
 GREEN, ORANGE, RED = QColor("#30d158"), QColor("#ff9f0a"), QColor("#ff453a")
+OPACITIES = (1.0, 0.9, 0.75, 0.5)
+
+# SetThreadExecutionState flags
+ES_CONTINUOUS, ES_SYSTEM_REQUIRED, ES_DISPLAY_REQUIRED = 0x80000000, 0x00000001, 0x00000002
+
+
+def keep_awake(on: bool) -> bool:
+    """Keep Windows (system and display) awake, or allow sleep again. The request belongs
+    to the calling thread, so it is always made from the GUI thread."""
+    try:
+        flags = ES_CONTINUOUS | (ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED if on else 0)
+        return bool(ctypes.windll.kernel32.SetThreadExecutionState(flags))
+    except (AttributeError, OSError):  # not Windows
+        return False
 
 
 class Bridge(QObject):
@@ -153,6 +168,8 @@ class PhoneWindow(QWidget):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setMouseTracking(True)
         self._apply_flags()
+        self.setWindowOpacity(max(0.3, min(1.0, float(settings.get("opacity") or 1.0))))
+        self._awake = False  # keep_awake() requested
 
         self.image = None  # QImage of the current frame (device pixels)
         self._array = None  # keeps the ndarray behind self.image alive
@@ -319,6 +336,7 @@ class PhoneWindow(QWidget):
                 self._relayout()
         if self.state != "mirroring":
             self.state = "mirroring"
+            self._update_awake()
         self._frames += 1
         now = time.time()
         if now - self._fps_t >= 1:
@@ -345,6 +363,7 @@ class PhoneWindow(QWidget):
             self.state = "paused"
         elif event == "mirror_stopped":
             self.state = "waiting"
+            self._update_awake()
             self.image = None
             self._array = None
             self.src_size = None
@@ -390,6 +409,22 @@ class PhoneWindow(QWidget):
             self._flash_bar()
         self._update_anim()
         self.update()
+
+    def _update_awake(self):
+        want = self.state == "mirroring" and bool(self.settings.get("keep_awake", True))
+        if want != self._awake:
+            self._awake = want
+            keep_awake(want)
+
+    def _set_opacity(self, value):
+        self.settings["opacity"] = value
+        self.settings.save()
+        self.setWindowOpacity(value)
+
+    def _toggle_keep_awake(self):
+        self.settings["keep_awake"] = not self.settings.get("keep_awake", True)
+        self.settings.save()
+        self._update_awake()
 
     def _show_control_error(self, message):
         if self._error_box is not None:
@@ -1087,6 +1122,16 @@ class PhoneWindow(QWidget):
         m.addAction(fs)
         size = m.addMenu("Size")
         size.setEnabled(not self.fullscreen)
+        opacity = m.addMenu("Opacity")
+        current = self.settings.get("opacity") or 1.0
+        for v in OPACITIES:
+            a = opacity.addAction(f"{v:.0%}", lambda v=v: self._set_opacity(v))
+            a.setCheckable(True)
+            a.setChecked(abs(current - v) < 0.01)
+        awake = QAction("Keep PC Awake While Mirroring", m, checkable=True,
+                        checked=bool(self.settings.get("keep_awake", True)))
+        awake.triggered.connect(self._toggle_keep_awake)
+        m.addAction(awake)
         screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
         for label, k in (("Small", 0.5), ("Medium", 0.72), ("Large", 0.92)):
             size.addAction(label, lambda k=k: self.set_phone_height(screen.height() * k))
@@ -1227,6 +1272,9 @@ class PhoneWindow(QWidget):
 
     def closeEvent(self, e):
         self._save_pos()
+        if self._awake:
+            self._awake = False
+            keep_awake(False)
         super().closeEvent(e)
 
     # ------------------------------------------------------------ tray
