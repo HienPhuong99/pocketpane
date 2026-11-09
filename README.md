@@ -16,7 +16,13 @@ WebDriverAgent, you can control it from the PC with your mouse and keyboard.
 - **iPhone-shaped window.** Frameless, rounded, always on top by default, resizable, and it
   remembers its position.
 - **Rotation.** When the iPhone turns to landscape, the window turns with it.
-- **Screenshots.** Save the current frame as a PNG in one click.
+- **Screenshots.** Save the current frame as a PNG (Ctrl+S) or copy it to the clipboard
+  (Ctrl+Shift+S).
+- **Screen recording.** Record the iPhone screen and sound to an MP4 file (Ctrl+R).
+- **Full screen** (F11), **window opacity**, **stream quality** (720p / 1080p / 1440p,
+  30 / 60 fps) and a **stream info overlay** (Ctrl+I: resolution, fps, bitrate).
+- **Background friendly.** Start with Windows in the tray (the window appears when an iPhone
+  connects), keep the PC awake while mirroring, hide the PC from Screen Mirroring.
 - **Optional mouse and keyboard control over USB.** Tap, long press, swipe, scroll, type,
   Home, App Switcher and volume, all through
   [WebDriverAgent](https://github.com/appium/WebDriverAgent).
@@ -86,7 +92,7 @@ Move the mouse over the window to show the **top bar**. From left to right it ha
 | Action | What it does |
 |---|---|
 | Left-drag anywhere | Move the window |
-| Double-click | Switch between big and normal size |
+| Double-click | Switch between big and normal size (leaves full screen) |
 | Ctrl + mouse wheel | Resize |
 | Ctrl + Plus / Ctrl + Minus | Resize |
 | Right-click | Open the menu |
@@ -105,6 +111,8 @@ window.
 | Double-click | Double tap (both taps are sent together, so apps see a real double tap) |
 | Mouse wheel | Scroll. Wheel steps are collected for about 120 ms and sent as one scroll |
 | Typing | Text input. Characters are buffered for about 80 ms; Backspace and Enter work |
+| Middle click | Home |
+| Mouse Back button | Back (swipe from the left edge) |
 | Drag the top bar, or Alt + drag anywhere | Move the window |
 | Ctrl + mouse wheel | Resize |
 
@@ -117,13 +125,24 @@ line from its start to its end.
 |---|---|
 | Ctrl + H | Home |
 | Ctrl + J | App Switcher |
+| Ctrl + B | Back (swipe from the left edge) |
+| Ctrl + K | Spotlight search |
+| Ctrl + N | Notification Center |
+| Ctrl + Shift + N | Control Center |
+| Ctrl + L | Lock the iPhone |
+| Ctrl + V | Type the PC clipboard text into the focused field (up to 4000 characters) |
 | Ctrl + Up / Ctrl + Down | iPhone volume up / down |
 | Ctrl + M | Mute / unmute the sound on the PC |
 | Ctrl + U | Turn USB control on / off |
+| Ctrl + S | Save a screenshot (full iPhone resolution) |
+| Ctrl + Shift + S | Copy a screenshot to the clipboard |
+| Ctrl + R | Start / stop recording to MP4 |
+| Ctrl + I | Show / hide the stream info overlay |
+| F11 (Esc to leave) | Full screen |
 | Ctrl + Plus / Ctrl + Minus | Resize the window |
 
-Home, App Switcher and iPhone volume act on the phone, so they only do something while
-control is ready. App Switcher swipes up from the bottom edge and holds on iPhones with
+Home, App Switcher, Back, Spotlight, Notification Center, Control Center, Lock, Paste and
+iPhone volume act on the phone, so they only do something while control is ready. App Switcher swipes up from the bottom edge and holds on iPhones with
 Face ID, and double-presses Home on iPhones with a Home button.
 
 Ctrl + mouse wheel resizes in proportion to how far the wheel turns (about 6% per notch), so
@@ -134,14 +153,23 @@ smooth scrolling with a touchpad resizes smoothly too.
 | Item | Action |
 |---|---|
 | Control iPhone (USB) | Turn control on or off (checkable) |
-| Home | Go to the Home Screen |
-| App Switcher | Open the App Switcher |
+| Home, App Switcher, Back, Spotlight, Notification Center, Control Center, Lock Screen | Act on the iPhone (control on) |
 | Volume Up / Volume Down | Change the iPhone volume |
+| Paste PC Clipboard | Type the clipboard text on the iPhone |
 | Always on Top | Keep the window above other windows |
 | Sound | Play the iPhone sound on the PC |
+| Full Screen | Fill the screen (F11) |
 | Size | Small, Medium or Large |
-| Save Screenshot | Save the current frame to `Pictures\PocketPane` |
+| Stream Quality | 720p / 1080p / 1440p and 30 / 60 fps; applies on the next connection |
+| Show Stream Info | Resolution, fps, bitrate, decoded and dropped frames |
+| Opacity | 100%, 90%, 75% or 50% |
+| Keep PC Awake While Mirroring | Stop Windows from sleeping while frames arrive (on by default) |
+| Start with Windows | Start in the tray at sign-in; the window shows when an iPhone connects |
+| Save Screenshot / Copy Screenshot | Save to `Pictures\PocketPane` / copy to the clipboard |
+| Record Screen | Record video and sound to `Videos\PocketPane` (MP4) |
 | Rename PC... | Change the name the iPhone shows under Screen Mirroring |
+| Visible in Screen Mirroring | Untick to hide this PC from iPhones (a running session continues) |
+| Open Media Folder | Open the folder of the last screenshot or recording |
 | Open Log | Open `%LOCALAPPDATA%\PocketPane\pocketpane.log` |
 | Quit | Exit the app |
 
@@ -280,6 +308,20 @@ plays to the right output device. The iPhone's own volume buttons also control t
 - **Control needs setup.** It requires a cable, Developer Mode and a sideloaded WDA that
   has to be re-signed every 7 days with a free Apple ID.
 
+## Recording
+
+Ctrl+R (or right-click > Record Screen) records the mirrored screen and its sound to
+`Videos\PocketPane\iPhone <date> <time>.mp4`. The top bar shows `REC m:ss`, and a red dot
+stays in the corner while the bar is hidden. Press Ctrl+R again to finish the file; a
+notification shows where it was saved (click it to open the folder). `--record` starts
+recording at launch.
+
+iOS sends a full key frame only when mirroring starts, so the recording re-encodes the
+decoded frames (H.264, libx264 "ultrafast", up to 30 fps) instead of copying the stream. If
+the PC is too slow to keep up, frames are skipped rather than delaying the mirror. When the
+iPhone rotates, the current file is finished and a new part `... (2).mp4` starts, because an
+MP4 video track cannot change its size.
+
 ## Settings
 
 `%LOCALAPPDATA%\PocketPane\settings.json` is created on the first start. Useful keys:
@@ -291,10 +333,14 @@ plays to the right output device. The iPhone's own volume buttons also control t
 | `fps` | `60` | Frame rate requested from the iPhone |
 | `audio` | `true` | Play the iPhone sound on the PC |
 | `always_on_top` | `true` | Keep the window above other windows |
+| `opacity` | `1.0` | Window opacity (0.3 - 1) |
+| `keep_awake` | `true` | Keep the PC awake while mirroring |
 
 The file also stores the window position and the receiver's identity (a random MAC address
 and an Ed25519 key). Delete the file to reset everything; the iPhone will then see a new
-receiver.
+receiver. On its first start PocketPane copies the settings of the original "iPhone Mirror"
+app (`%LOCALAPPDATA%\iPhoneMirror\settings.json`) if there are any, so the iPhone keeps
+seeing the same receiver.
 
 ## How it works
 
@@ -347,6 +393,8 @@ run next to a normal copy of the app. Other options:
 |---|---|
 | `--port N` | RTSP port (default 7000, or 7100 with `--local`) |
 | `--control` | Turn on iPhone control (USB / WebDriverAgent) at launch |
+| `--record` | Start recording to `Videos\PocketPane` at launch |
+| `--tray` | Start hidden in the notification area; the window shows when an iPhone connects |
 | `--grab DIR` | Save a PNG of the window every 2 seconds |
 | `--quit-after N` | Exit after N seconds |
 
@@ -369,9 +417,11 @@ python tools/gen_fairplay.py path\to\UxPlay\lib
 | `iphone_mirror/discovery.py` | mDNS advertisement |
 | `iphone_mirror/config.py` | Settings and receiver identity |
 | `iphone_mirror/ui.py` | The iPhone-shaped window |
+| `iphone_mirror/record.py` | Screen recording to MP4 |
+| `iphone_mirror/autostart.py` | Start with Windows (Startup folder shortcut) |
 | `iphone_mirror/control/` | WebDriverAgent client and USB bring-up |
-| `tests/` | FairPlay and WDA tests |
-| `tools/` | Simulated iPhone, FairPlay table generator |
+| `tests/` | FairPlay, WDA, recording and window tests (`python -m pytest tests`) |
+| `tools/` | Simulated iPhone, FairPlay table generator, paint and decode benchmarks |
 
 ## Credits
 
