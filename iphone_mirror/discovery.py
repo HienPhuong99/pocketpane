@@ -87,6 +87,8 @@ class Advertiser:
         self.addresses = []
 
     def start(self):
+        if self.zc is not None:
+            return  # already announced
         self.addresses = local_ipv4_addresses()
         name = self.settings["name"]
         host = socket.gethostname().split(".")[0] + ".local."

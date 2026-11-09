@@ -73,5 +73,46 @@ class RecorderTest(unittest.TestCase):
             self.assertEqual(rec.frames, 1)
 
 
+class AdvertiseTest(unittest.TestCase):
+    """Real mDNS on this machine: skipped where multicast does not work."""
+
+    def test_hide_and_show_in_screen_mirroring(self):
+        from zeroconf import Zeroconf
+
+        from iphone_mirror import net
+        from iphone_mirror.airplay import Receiver
+
+        name = f"PocketPane Test {time.time_ns() % 100000}"
+        old_port, net.PORT = net.PORT, 7161
+        settings = config.Settings(Path(tempfile.mkdtemp()) / "s.json")
+        settings["name"] = name
+        events = []
+        rx = Receiver(settings, on_frame=lambda *a: None, on_event=lambda e, i: events.append(e))
+        try:
+            rx.start()
+            deadline = time.monotonic() + 15
+            while "listening" not in events and time.monotonic() < deadline:
+                time.sleep(0.1)
+
+            def seen():
+                z = Zeroconf()
+                try:
+                    return z.get_service_info("_airplay._tcp.local.", f"{name}._airplay._tcp.local.", 2500) is not None
+                finally:
+                    z.close()
+
+            if not seen():
+                self.skipTest("mDNS lookups do not work here")
+            rx.set_advertised(False)
+            time.sleep(1.5)
+            self.assertFalse(seen())
+            rx.set_advertised(True)
+            time.sleep(1.5)
+            self.assertTrue(seen())
+        finally:
+            rx.stop()
+            net.PORT = old_port
+
+
 if __name__ == "__main__":
     unittest.main()

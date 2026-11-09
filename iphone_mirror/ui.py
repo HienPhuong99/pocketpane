@@ -557,6 +557,9 @@ class PhoneWindow(QWidget):
             )
         elif self.state == "error":
             title, sub = "Error", self.info.get("message", "")
+        elif self.rx is not None and not self.rx.advertised:
+            title = "Hidden"
+            sub = "This PC is not shown in Screen Mirroring. Right-click > Visible in Screen Mirroring to show it."
         else:
             title = "Waiting for iPhone"
             sub = f'On your iPhone open Control Center > Screen Mirroring and choose "{name}"'
@@ -1257,6 +1260,10 @@ class PhoneWindow(QWidget):
         rec.triggered.connect(self._toggle_recording)
         m.addAction(rec)
         m.addAction("Rename PC...", self._rename)
+        vis = QAction("Visible in Screen Mirroring", m, checkable=True, checked=bool(self.rx and self.rx.advertised))
+        vis.setEnabled(self.rx is not None)
+        vis.triggered.connect(self._toggle_advertised)
+        m.addAction(vis)
         m.addAction("Open Media Folder", self._open_media_folder)
         m.addAction("Open Log", self._open_log)
         m.addSeparator()
@@ -1294,6 +1301,12 @@ class PhoneWindow(QWidget):
         if ok and name and self.rx:
             self.rx.rename(name)
             self.info = dict(self.info, name=name)
+            self.update()
+
+    def _toggle_advertised(self):
+        if self.rx:
+            self.rx.set_advertised(not self.rx.advertised)
+            self._hint("Shown in Screen Mirroring" if self.rx.advertised else "Hidden from Screen Mirroring")
             self.update()
 
     def _toggle_mute(self):

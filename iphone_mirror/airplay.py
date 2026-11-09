@@ -386,6 +386,7 @@ class Receiver:
         self.loop = None
         self.port = 0
         self.advertiser = None
+        self.advertised = True  # False: hidden from Screen Mirroring (mDNS announcement withdrawn)
         self._mirror_owner = None
         self._thread = None
         self._server = None
@@ -498,12 +499,32 @@ class Receiver:
         def reannounce():
             try:
                 self.advertiser.stop()
-                self.advertiser.start()
+                if self.advertised:
+                    self.advertiser.start()
                 self.emit("listening", name=name, addresses=self.advertiser.addresses, port=self.port)
             except Exception:
                 log.exception("re-announce failed")
 
         self.loop.call_soon_threadsafe(lambda: self.loop.run_in_executor(None, reannounce))
+
+    def set_advertised(self, on: bool):
+        """Show or hide this PC in the iPhone's Screen Mirroring list. A session that is already
+        running is not affected."""
+        self.advertised = on
+        if not self.loop or not self.advertiser:
+            return
+
+        def apply():
+            try:
+                if on:
+                    self.advertiser.start()
+                else:
+                    self.advertiser.stop()
+                log.info("receiver %s", "announced" if on else "hidden")
+            except Exception:
+                log.exception("could not change the announcement")
+
+        self.loop.call_soon_threadsafe(lambda: self.loop.run_in_executor(None, apply))
 
     def stop(self):
         self.stop_recording()
