@@ -102,5 +102,23 @@ class WindowOptionsTest(unittest.TestCase):
         self.assertEqual(Settings(win.settings.path)["opacity"], 0.5)
 
 
+class TrayStartTest(unittest.TestCase):
+    def test_hidden_window_shows_when_an_iphone_connects(self):
+        win = make_window()
+        self.assertFalse(win.isVisible())
+        win.on_event("connecting", {"name": "Test iPhone", "ip": "192.168.1.5"})
+        self.assertTrue(win.isVisible())
+        win.close()
+
+    def test_autostart_shortcut_round_trip(self):
+        from iphone_mirror import autostart
+
+        with tempfile.TemporaryDirectory() as d:
+            self.assertTrue(autostart.set_enabled(True, Path(d)))
+            self.assertTrue(autostart.enabled(Path(d)))
+            self.assertFalse(autostart.set_enabled(False, Path(d)))
+            self.assertFalse(autostart.enabled(Path(d)))
+
+
 if __name__ == "__main__":
     unittest.main()

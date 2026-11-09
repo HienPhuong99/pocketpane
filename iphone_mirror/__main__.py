@@ -46,6 +46,8 @@ def parse_args():
     )
     p.add_argument("--port", type=int, help=f"RTSP port (default {net.PORT}, or {LOCAL_PORT} with --local)")
     p.add_argument("--control", action="store_true", help="start iPhone control (USB / WebDriverAgent) at launch")
+    p.add_argument("--tray", action="store_true",
+                   help="start hidden in the notification area; the window shows when an iPhone connects")
     p.add_argument("--record", action="store_true", help="start recording to Videos\\PocketPane at launch")
     p.add_argument("--grab", metavar="DIR", help="self-test: save a PNG of the window every 2 s")
     p.add_argument("--quit-after", type=float, default=0, help="self-test: exit after N seconds")
@@ -100,7 +102,8 @@ def main():
     bridge.control.connect(win.on_control)
     if instance is not None:
         instance.newConnection.connect(lambda: (instance.nextPendingConnection(), win._show_front()))
-    win.show()
+    if not (args.tray and win._tray is not None):
+        win.show()
     win._update_target()
     rx.start()
     if args.control:

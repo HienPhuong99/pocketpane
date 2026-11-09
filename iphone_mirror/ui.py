@@ -35,6 +35,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon, QToolTip, QWidget
 
+from . import autostart
 from .config import APP_NAME
 from .control import ERROR, OFF, READY, STARTING
 
@@ -351,6 +352,8 @@ class PhoneWindow(QWidget):
             if self.state in ("starting", "error"):
                 self.state = "waiting"
         elif event == "connecting":
+            if not self.isVisible():  # started in the tray (--tray): show up when the iPhone connects
+                self._show_front()
             self.client = info.get("name")
             self.state = "connecting"
             ip = info.get("ip")
@@ -420,6 +423,10 @@ class PhoneWindow(QWidget):
         self.settings["opacity"] = value
         self.settings.save()
         self.setWindowOpacity(value)
+
+    def _toggle_autostart(self):
+        on = autostart.set_enabled(not autostart.enabled())
+        self._hint("Starts with Windows, in the tray" if on else "Does not start with Windows")
 
     def _toggle_keep_awake(self):
         self.settings["keep_awake"] = not self.settings.get("keep_awake", True)
@@ -1132,6 +1139,9 @@ class PhoneWindow(QWidget):
                         checked=bool(self.settings.get("keep_awake", True)))
         awake.triggered.connect(self._toggle_keep_awake)
         m.addAction(awake)
+        boot = QAction("Start with Windows", m, checkable=True, checked=autostart.enabled())
+        boot.triggered.connect(self._toggle_autostart)
+        m.addAction(boot)
         screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
         for label, k in (("Small", 0.5), ("Medium", 0.72), ("Large", 0.92)):
             size.addAction(label, lambda k=k: self.set_phone_height(screen.height() * k))
@@ -1285,6 +1295,7 @@ class PhoneWindow(QWidget):
         tray.setToolTip(APP_NAME)
         menu = QMenu()
         menu.addAction("Show Window", self._show_front)
+        menu.addAction("Hide Window", self.hide)
         menu.addAction("Quit", QApplication.quit)
         tray.setContextMenu(menu)
         tray.activated.connect(lambda reason: self._show_front() if reason == QSystemTrayIcon.Trigger else None)
