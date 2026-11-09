@@ -1,6 +1,9 @@
-# iPhone Mirror for Windows
+# PocketPane
 
-iPhone Mirror turns a Windows PC into an AirPlay screen-mirroring receiver and shows your
+> Fork of [0xCodez/iphone-mirror-windows](https://github.com/0xCodez/iphone-mirror-windows) (GPL-3.0).
+> Roadmap: [docs/PLAN.md](docs/PLAN.md). What changed in this fork: [docs/REPORT.md](docs/REPORT.md).
+
+PocketPane turns a Windows PC into an AirPlay screen-mirroring receiver and shows your
 iPhone in a frameless, rounded, iPhone-shaped window that floats on top of your other apps,
 much like "iPhone Mirroring" on macOS. Picture and sound come over Wi-Fi with nothing to
 install on the phone. If you also connect the iPhone with a cable once and set up
@@ -41,9 +44,9 @@ For the optional USB control you also need:
 `install.bat`:
 
 - checks that Python 3.11+ is available,
-- creates a private virtual environment in `%LOCALAPPDATA%\iPhoneMirror\venv`,
+- creates a private virtual environment in `%LOCALAPPDATA%\PocketPane\venv`,
 - installs the dependencies from `requirements.txt` into it,
-- creates an **iPhone Mirror** shortcut on the Desktop and in the Start menu. The shortcut
+- creates an **PocketPane** shortcut on the Desktop and in the Start menu. The shortcut
   runs `pythonw -m iphone_mirror` from the repository folder, so no console window opens.
 
 If you move the folder later, run `install.bat` again so the shortcuts point to the new
@@ -52,7 +55,7 @@ control helper (see below).
 
 ## Usage
 
-1. Start **iPhone Mirror**. An iPhone-shaped window appears with the text
+1. Start **PocketPane**. An iPhone-shaped window appears with the text
    **"Waiting for iPhone"**. The footer shows the PC's addresses:
    `PC: <ips>  -  iPhone and PC must be on the same Wi-Fi`.
 2. **First start only:** Windows Defender Firewall asks whether Python may use the network.
@@ -137,9 +140,9 @@ smooth scrolling with a touchpad resizes smoothly too.
 | Always on Top | Keep the window above other windows |
 | Sound | Play the iPhone sound on the PC |
 | Size | Small, Medium or Large |
-| Save Screenshot | Save the current frame to `Pictures\iPhone Mirror` |
+| Save Screenshot | Save the current frame to `Pictures\PocketPane` |
 | Rename PC... | Change the name the iPhone shows under Screen Mirroring |
-| Open Log | Open `%LOCALAPPDATA%\iPhoneMirror\iphone_mirror.log` |
+| Open Log | Open `%LOCALAPPDATA%\PocketPane\pocketpane.log` |
 | Quit | Exit the app |
 
 If the controller reports an error, the app shows it in a non-blocking message box titled
@@ -147,10 +150,10 @@ If the controller reports an error, the app shows it in a non-blocking message b
 
 ## USB control (optional)
 
-AirPlay only carries picture and sound. To send taps and keystrokes back, iPhone Mirror
+AirPlay only carries picture and sound. To send taps and keystrokes back, PocketPane
 talks to [WebDriverAgent](https://github.com/appium/WebDriverAgent) (WDA), Appium's
 open-source automation server built on Apple's XCUITest, which runs as a small app on the
-phone. iPhone Mirror starts it over USB with
+phone. PocketPane starts it over USB with
 [pymobiledevice3](https://github.com/doronz88/pymobiledevice3). No Mac is needed, and on
 iOS 17.4 or later (and on iOS 16 or earlier) no administrator rights either. iOS 17.0 - 17.3
 can only be controlled with administrator rights: update the iPhone, or run
@@ -195,7 +198,7 @@ environment).
    ```
 
    and fix whatever it reports until all checks pass.
-7. **Turn control on.** In the iPhone Mirror window press **Ctrl + U**, click the hand
+7. **Turn control on.** In the PocketPane window press **Ctrl + U**, click the hand
    button in the top bar, or right-click > **Control iPhone (USB)**. The button pulses orange
    while WDA starts (the first time also downloads and mounts the Developer Disk Image, which
    can take a minute) and turns green when it is ready.
@@ -258,7 +261,7 @@ plays to the right output device. The iPhone's own volume buttons also control t
   `WebDriverAgentRunner.ipa` again with Sideloadly.
 - "Untrusted Developer" on the phone: trust the profile in Settings > General >
   VPN & Device Management.
-- Logs are in `%LOCALAPPDATA%\iPhoneMirror\*.log`: `iphone_mirror.log` for the app and
+- Logs are in `%LOCALAPPDATA%\PocketPane\*.log`: `pocketpane.log` for the app and
   `wda_runner.log` / `wda_forward.log` for the WebDriverAgent processes.
 
 ## Limitations
@@ -267,7 +270,7 @@ plays to the right output device. The iPhone's own volume buttons also control t
   show a black screen. The iPhone decides this, not the receiver.
 - **Resolution.** The iPhone is asked for a stream 1080 pixels high by default. To try a
   sharper picture, quit the app, set `"height": 1440` in
-  `%LOCALAPPDATA%\iPhoneMirror\settings.json` and start it again. If the iPhone stops
+  `%LOCALAPPDATA%\PocketPane\settings.json` and start it again. If the iPhone stops
   connecting, change it back to `1080`.
 - **Control latency.** Every action is an HTTP request to WebDriverAgent, so expect about
   100-200 ms before the iPhone reacts. A single click waits about 0.2 s more, to tell it
@@ -279,7 +282,7 @@ plays to the right output device. The iPhone's own volume buttons also control t
 
 ## Settings
 
-`%LOCALAPPDATA%\iPhoneMirror\settings.json` is created on the first start. Useful keys:
+`%LOCALAPPDATA%\PocketPane\settings.json` is created on the first start. Useful keys:
 
 | Key | Default | Meaning |
 |---|---|---|
@@ -318,7 +321,7 @@ receiver.
 
 ## Development
 
-Use the app's environment (`%LOCALAPPDATA%\iPhoneMirror\venv\Scripts\python.exe`) or any
+Use the app's environment (`%LOCALAPPDATA%\PocketPane\venv\Scripts\python.exe`) or any
 Python 3.11+ with `requirements.txt` installed, and run everything from the repository
 folder.
 

@@ -33,6 +33,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon, QToolTip, QWidget
 
+from .config import APP_NAME
 from .control import ERROR, OFF, READY, STARTING
 
 log = logging.getLogger(__name__)
@@ -129,7 +130,7 @@ class PhoneWindow(QWidget):
         self.settings = settings
         self.rx = receiver_ref  # set later by main
         self.ctrl = controller  # control.Controller (optional)
-        self.setWindowTitle("iPhone Mirror")
+        self.setWindowTitle(APP_NAME)
         self.setWindowIcon(app_icon())
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setMouseTracking(True)
@@ -1042,7 +1043,7 @@ class PhoneWindow(QWidget):
         try:
             arr = frame.to_ndarray(format="bgra")
             img = QImage(arr.data, arr.shape[1], arr.shape[0], arr.strides[0], QImage.Format_RGB32).copy()
-            folder = Path.home() / "Pictures" / "iPhone Mirror"
+            folder = Path.home() / "Pictures" / APP_NAME
             folder.mkdir(parents=True, exist_ok=True)
             path = folder / time.strftime("iPhone %Y-%m-%d %H-%M-%S.png")
             img.save(str(path))
@@ -1069,7 +1070,7 @@ class PhoneWindow(QWidget):
         if not QSystemTrayIcon.isSystemTrayAvailable():
             return
         tray = QSystemTrayIcon(app_icon(), self)
-        tray.setToolTip("iPhone Mirror")
+        tray.setToolTip(APP_NAME)
         menu = QMenu()
         menu.addAction("Show Window", self._show_front)
         menu.addAction("Quit", QApplication.quit)

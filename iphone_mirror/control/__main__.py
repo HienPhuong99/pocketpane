@@ -159,7 +159,7 @@ def _check_wda(url):
 
 
 def cmd_doctor(args):
-    say("iPhone Mirror: checking USB control")
+    say("PocketPane: checking USB control")
     say()
     usb_ok = _check_usb()
     urls = [DEFAULT_URL]

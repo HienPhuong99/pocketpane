@@ -1,4 +1,4 @@
-"""iPhone Mirror for Windows: AirPlay screen-mirroring receiver in an iPhone-shaped window."""
+"""PocketPane: AirPlay screen-mirroring receiver in an iPhone-shaped window."""
 import argparse
 import logging
 import os
@@ -12,11 +12,11 @@ from PySide6.QtWidgets import QApplication
 
 from . import net
 from .airplay import Receiver
-from .config import APP_DIR, LOG_FILE, SETTINGS_FILE, Settings
+from .config import APP_DIR, APP_NAME, LOG_FILE, SETTINGS_FILE, Settings, migrate_old_settings
 from .control import OFF, Controller
 from .ui import Bridge, PhoneWindow
 
-INSTANCE_KEY = "iPhoneMirror-single-instance"
+INSTANCE_KEY = "PocketPane-single-instance"
 LOCAL_PORT = 7100  # --local self-tests must not collide with a normal instance on port 7000
 LOCAL_SETTINGS = APP_DIR / "settings-local.json"  # ... nor overwrite its settings
 
@@ -61,7 +61,7 @@ def main():
         net.PORT = args.port
     setup_logging()
     app = QApplication(sys.argv[:1])
-    app.setApplicationName("iPhone Mirror")
+    app.setApplicationName(APP_NAME)
 
     instance = None
     if not args.local:
@@ -76,6 +76,8 @@ def main():
         instance = QLocalServer()
         instance.listen(INSTANCE_KEY)
 
+    if not args.local:
+        migrate_old_settings()
     settings = Settings(LOCAL_SETTINGS if args.local else SETTINGS_FILE)
     logging.info(
         "starting, name=%r, port=%d, local=%s, pid=%d", settings["name"], net.PORT, args.local, os.getpid()

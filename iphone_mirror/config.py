@@ -3,14 +3,18 @@ import json
 import logging
 import os
 import secrets
+import shutil
 import socket
 from pathlib import Path
 
 log = logging.getLogger(__name__)
 
-APP_DIR = Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "iPhoneMirror"
+APP_NAME = "PocketPane"
+_LOCAL = Path(os.environ.get("LOCALAPPDATA") or Path.home())
+APP_DIR = _LOCAL / APP_NAME
+OLD_APP_DIR = _LOCAL / "iPhoneMirror"  # data folder of the upstream "iPhone Mirror" app
 SETTINGS_FILE = APP_DIR / "settings.json"
-LOG_FILE = APP_DIR / "iphone_mirror.log"
+LOG_FILE = APP_DIR / "pocketpane.log"
 
 DEFAULTS = {
     # name shown on the iPhone in Control Center -> Screen Mirroring
@@ -29,6 +33,21 @@ DEFAULTS = {
     "mac": "",
     "ed25519_seed": "",
 }
+
+
+def migrate_old_settings(path: Path = SETTINGS_FILE, old: Path = OLD_APP_DIR / "settings.json"):
+    """Carry the upstream app's settings over once, so the iPhone keeps seeing the same
+    receiver (same name, MAC and pairing key) after switching to PocketPane."""
+    if path.exists() or not old.exists():
+        return False
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(old, path)
+        log.info("settings copied from %s", old)
+        return True
+    except OSError as e:
+        log.warning("could not copy old settings: %s", e)
+        return False
 
 
 class Settings:

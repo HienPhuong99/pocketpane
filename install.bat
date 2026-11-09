@@ -1,13 +1,13 @@
 @echo off
 setlocal
-rem iPhone Mirror installer.
-rem Creates a Python environment in %LOCALAPPDATA%\iPhoneMirror\venv, installs the
-rem dependencies and creates "iPhone Mirror" shortcuts (Desktop + Start menu) that
+rem PocketPane installer.
+rem Creates a Python environment in %LOCALAPPDATA%\PocketPane\venv, installs the
+rem dependencies and creates "PocketPane" shortcuts (Desktop + Start menu) that
 rem point at this folder. Run it again after moving the folder.
 
 set "APPDIR=%~dp0"
 if "%APPDIR:~-1%"=="\" set "APPDIR=%APPDIR:~0,-1%"
-set "VENV=%LOCALAPPDATA%\iPhoneMirror\venv"
+set "VENV=%LOCALAPPDATA%\PocketPane\venv"
 
 where python >nul 2>nul || (
   echo Python was not found. Install Python 3.11 or newer from https://www.python.org/downloads/
@@ -32,7 +32,7 @@ echo Creating the shortcuts...
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$ws = New-Object -ComObject WScript.Shell;" ^
   "foreach ($dir in @([Environment]::GetFolderPath('Desktop'), (Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs'))) {" ^
-  "  $s = $ws.CreateShortcut((Join-Path $dir 'iPhone Mirror.lnk'));" ^
+  "  $s = $ws.CreateShortcut((Join-Path $dir 'PocketPane.lnk'));" ^
   "  $s.TargetPath = Join-Path $env:VENV 'Scripts\pythonw.exe';" ^
   "  $s.Arguments = '-m iphone_mirror';" ^
   "  $s.WorkingDirectory = $env:APPDIR;" ^
@@ -44,5 +44,5 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
 )
 
 echo.
-echo Done. Start "iPhone Mirror" from the Desktop or the Start menu.
+echo Done. Start "PocketPane" from the Desktop or the Start menu.
 pause
