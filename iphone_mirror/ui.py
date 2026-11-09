@@ -58,7 +58,7 @@ ZOOM_PER_NOTCH = 1.06
 ZOOM_MS = 30
 
 # Windows virtual-key codes: shortcuts must also work with non-Latin keyboard layouts
-VK_H, VK_J, VK_M, VK_R, VK_U = 0x48, 0x4A, 0x4D, 0x52, 0x55
+VK_H, VK_J, VK_M, VK_R, VK_S, VK_U = 0x48, 0x4A, 0x4D, 0x52, 0x53, 0x55
 VK_OEM_PLUS, VK_OEM_MINUS, VK_ADD, VK_SUBTRACT = 0xBB, 0xBD, 0x6B, 0x6D
 
 GREEN, ORANGE, RED = QColor("#30d158"), QColor("#ff9f0a"), QColor("#ff453a")
@@ -991,6 +991,10 @@ class PhoneWindow(QWidget):
                 self._toggle_mute()
             elif is_key(e, (Qt.Key_R,), (VK_R,)):
                 self._toggle_recording()
+            elif is_key(e, (Qt.Key_S,), (VK_S,)) and mods & Qt.ShiftModifier:
+                self.copy_screenshot()
+            elif is_key(e, (Qt.Key_S,), (VK_S,)):
+                self.screenshot()
             elif is_key(e, (Qt.Key_U,), (VK_U,)):
                 self._toggle_control()
             else:
@@ -1033,13 +1037,15 @@ class PhoneWindow(QWidget):
         for label, k in (("Small", 0.5), ("Medium", 0.72), ("Large", 0.92)):
             size.addAction(label, lambda k=k: self.set_phone_height(screen.height() * k))
         m.addSeparator()
-        m.addAction("Save Screenshot", self.screenshot)
+        m.addAction("Save Screenshot\tCtrl+S", self.screenshot)
+        m.addAction("Copy Screenshot\tCtrl+Shift+S", self.copy_screenshot)
         recording = bool(self.rx and self.rx.recorder)
         rec = QAction("Record Screen\tCtrl+R", m, checkable=True, checked=recording)
         rec.setEnabled(self.rx is not None)
         rec.triggered.connect(self._toggle_recording)
         m.addAction(rec)
         m.addAction("Rename PC...", self._rename)
+        m.addAction("Open Media Folder", self._open_media_folder)
         m.addAction("Open Log", self._open_log)
         m.addSeparator()
         m.addAction("Quit", QApplication.quit)
@@ -1087,14 +1093,20 @@ class PhoneWindow(QWidget):
         if LOG_FILE.exists():
             os.startfile(str(LOG_FILE))
 
-    def screenshot(self):
+    def _frame_image(self):
+        """The current frame at full resolution as a QImage, or None (with a hint) if there is none."""
         frame = getattr(self.rx.decoder, "last_frame", None) if self.rx else None
-        if frame is None:
-            self._hint("Nothing to save yet")
-            return
+        if frame is None or self.image is None:
+            self._hint("Nothing to capture yet")
+            return None
+        arr = frame.to_ndarray(format="bgra")
+        return QImage(arr.data, arr.shape[1], arr.shape[0], arr.strides[0], QImage.Format_RGB32).copy()
+
+    def screenshot(self):
         try:
-            arr = frame.to_ndarray(format="bgra")
-            img = QImage(arr.data, arr.shape[1], arr.shape[0], arr.strides[0], QImage.Format_RGB32).copy()
+            img = self._frame_image()
+            if img is None:
+                return
             folder = Path.home() / "Pictures" / APP_NAME
             folder.mkdir(parents=True, exist_ok=True)
             path = folder / time.strftime("iPhone %Y-%m-%d %H-%M-%S.png")
@@ -1102,6 +1114,19 @@ class PhoneWindow(QWidget):
             self._notify_saved("Screenshot saved", path)
         except Exception:
             log.exception("screenshot failed")
+
+    def copy_screenshot(self):
+        img = self._frame_image()
+        if img is not None:
+            QApplication.clipboard().setImage(img)
+            self._hint("Screenshot copied to the clipboard")
+
+    def _open_media_folder(self):
+        for folder in (self._saved_folder, Path.home() / "Pictures" / APP_NAME):
+            if folder is not None:
+                folder.mkdir(parents=True, exist_ok=True)
+                os.startfile(str(folder))
+                return
 
     def _toggle_recording(self):
         if self.rx is None:
