@@ -102,6 +102,28 @@ class WindowOptionsTest(unittest.TestCase):
         self.assertEqual(Settings(win.settings.path)["opacity"], 0.5)
 
 
+class StreamInfoTest(unittest.TestCase):
+    def test_ctrl_i_toggles_the_overlay(self):
+        win = make_window()
+        win.rx.decoder.decoded, win.rx.decoder.dropped = 42, 1
+        QTest.keyClick(win, Qt.Key_I, Qt.ControlModifier)
+        self.assertTrue(win.show_stats)
+        lines = win._stats_lines()
+        self.assertIn("Video  60x128", lines)
+        self.assertIn("Decoded  42  dropped  1", lines)
+        win.grab()  # paints the overlay without errors
+        QTest.keyClick(win, Qt.Key_I, Qt.ControlModifier)
+        self.assertFalse(win.show_stats)
+
+    def test_quality_is_saved_for_the_next_connection(self):
+        win = make_window()
+        win._set_quality(1280, 720)
+        win._set_quality(fps=30)
+        s = Settings(win.settings.path)
+        self.assertEqual((s["width"], s["height"], s["fps"]), (1280, 720, 30))
+        self.assertIn("next time", win._bar_label())
+
+
 class TrayStartTest(unittest.TestCase):
     def test_hidden_window_shows_when_an_iphone_connects(self):
         win = make_window()

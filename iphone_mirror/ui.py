@@ -60,11 +60,14 @@ ZOOM_PER_NOTCH = 1.06
 ZOOM_MS = 30
 
 # Windows virtual-key codes: shortcuts must also work with non-Latin keyboard layouts
-VK_H, VK_J, VK_M, VK_R, VK_S, VK_U = 0x48, 0x4A, 0x4D, 0x52, 0x53, 0x55
+VK_H, VK_I, VK_J, VK_M, VK_R, VK_S, VK_U = 0x48, 0x49, 0x4A, 0x4D, 0x52, 0x53, 0x55
 VK_OEM_PLUS, VK_OEM_MINUS, VK_ADD, VK_SUBTRACT = 0xBB, 0xBD, 0x6B, 0x6D
 
 GREEN, ORANGE, RED = QColor("#30d158"), QColor("#ff9f0a"), QColor("#ff453a")
 OPACITIES = (1.0, 0.9, 0.75, 0.5)
+# stream quality presets: label -> requested (width, height); the iPhone scales its screen into it
+QUALITIES = (("720p", 1280, 720), ("1080p", 1920, 1080), ("1440p", 2560, 1440))
+FRAME_RATES = (30, 60)
 
 # SetThreadExecutionState flags
 ES_CONTINUOUS, ES_SYSTEM_REQUIRED, ES_DISPLAY_REQUIRED = 0x80000000, 0x00000001, 0x00000002
@@ -184,6 +187,9 @@ class PhoneWindow(QWidget):
         self.hover = False
         self.drag_offset = None
         self.fps = 0.0
+        self.kbps = 0.0
+        self.show_stats = False  # Ctrl+I overlay
+        self._bytes0 = 0
         self._frames = 0
         self._fps_t = time.time()
         self._hide_bar = QTimer(self, singleShot=True, interval=1200, timeout=self._bar_off)
@@ -342,6 +348,9 @@ class PhoneWindow(QWidget):
         now = time.time()
         if now - self._fps_t >= 1:
             self.fps = self._frames / (now - self._fps_t)
+            total = getattr(self.rx.decoder, "bytes", 0) if self.rx else 0
+            self.kbps = (total - self._bytes0) * 8 / 1000 / (now - self._fps_t)
+            self._bytes0 = total
             self._frames, self._fps_t = 0, now
         self.update()
 
@@ -476,6 +485,8 @@ class PhoneWindow(QWidget):
             self._paint_placeholder(p, rect, r)
 
         self._paint_touches(p, rect, r)
+        if self.show_stats:
+            self._paint_stats(p, rect)
 
         # bezel
         p.setBrush(Qt.NoBrush)
@@ -558,6 +569,44 @@ class PhoneWindow(QWidget):
                 Qt.AlignHCenter,
                 "PC: " + ", ".join(addrs) + "  -  iPhone and PC must be on the same Wi-Fi",
             )
+
+    def _stats_lines(self) -> list:
+        d = self.rx.decoder if self.rx else None
+        lines = []
+        if self.src_size:
+            lines.append(f"Video  {self.src_size[0]}x{self.src_size[1]}")
+        lines.append(f"Shown  {self.fps:.0f} fps")
+        lines.append(f"Bitrate  {self.kbps / 1000:.1f} Mbit/s" if self.kbps >= 1000 else f"Bitrate  {self.kbps:.0f} kbit/s")
+        if d is not None:
+            lines.append(f"Decoded  {getattr(d, 'decoded', 0)}  dropped  {getattr(d, 'dropped', 0)}")
+        q = self.settings
+        lines.append(f"Requested  {q['height']}p {q['fps']} fps")
+        return lines
+
+    def _paint_stats(self, p, rect):
+        lines = self._stats_lines()
+        p.setFont(font(8))
+        lh = metrics(8).height()
+        w = max(text_width(8, False, t) for t in lines) + 16
+        box = QRectF(rect.x() + 10, rect.bottom() - 14 - lh * len(lines) - 10, w, lh * len(lines) + 10)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(0, 0, 0, 170))
+        p.drawRoundedRect(box, 8, 8)
+        p.setPen(QColor(255, 255, 255, 230))
+        for i, t in enumerate(lines):
+            p.drawText(QRectF(box.x() + 8, box.y() + 5 + i * lh, w, lh), Qt.AlignLeft | Qt.AlignVCenter, t)
+
+    def _toggle_stats(self):
+        self.show_stats = not self.show_stats
+        self.update()
+
+    def _set_quality(self, width=None, height=None, fps=None):
+        if width:
+            self.settings["width"], self.settings["height"] = width, height
+        if fps:
+            self.settings["fps"] = fps
+        self.settings.save()
+        self._hint("Applies the next time the iPhone connects")
 
     def _paint_airplay_glyph(self, p, rect):
         s = rect.width() * 0.2
@@ -1081,6 +1130,8 @@ class PhoneWindow(QWidget):
                 self._phone("app_switcher")
             elif is_key(e, (Qt.Key_M,), (VK_M,)):
                 self._toggle_mute()
+            elif is_key(e, (Qt.Key_I,), (VK_I,)):
+                self._toggle_stats()
             elif is_key(e, (Qt.Key_R,), (VK_R,)):
                 self._toggle_recording()
             elif is_key(e, (Qt.Key_S,), (VK_S,)) and mods & Qt.ShiftModifier:
@@ -1129,6 +1180,19 @@ class PhoneWindow(QWidget):
         m.addAction(fs)
         size = m.addMenu("Size")
         size.setEnabled(not self.fullscreen)
+        quality = m.addMenu("Stream Quality")
+        for label, w, h in QUALITIES:
+            a = quality.addAction(label, lambda w=w, h=h: self._set_quality(w, h))
+            a.setCheckable(True)
+            a.setChecked(int(self.settings["height"]) == h)
+        quality.addSeparator()
+        for fps in FRAME_RATES:
+            a = quality.addAction(f"{fps} fps", lambda fps=fps: self._set_quality(fps=fps))
+            a.setCheckable(True)
+            a.setChecked(int(self.settings["fps"]) == fps)
+        stats = QAction("Show Stream Info\tCtrl+I", m, checkable=True, checked=self.show_stats)
+        stats.triggered.connect(self._toggle_stats)
+        m.addAction(stats)
         opacity = m.addMenu("Opacity")
         current = self.settings.get("opacity") or 1.0
         for v in OPACITIES:

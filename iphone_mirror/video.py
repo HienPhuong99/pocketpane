@@ -53,13 +53,20 @@ class VideoDecoder(threading.Thread):
         self.target = None  # (w, h) in device pixels, set by the UI
         self.last_frame = None  # full-resolution av.VideoFrame (for screenshots)
         self.recorder = None  # record.Recorder while recording: gets every decoded frame
+        # statistics for the overlay (Ctrl+I); written by the network / decoder threads
+        self.bytes = 0  # compressed video received
+        self.decoded = 0  # frames decoded
+        self.dropped = 0  # access units dropped because the queue was full
         self._codec = None
         self._stop = False
 
     def submit(self, data: bytes):
+        if data:
+            self.bytes += len(data)
         try:
             self.q.put_nowait(data)
         except queue.Full:
+            self.dropped += 1
             log.warning("decoder queue full, dropping frame")
 
     def reset(self):
@@ -93,6 +100,7 @@ class VideoDecoder(threading.Thread):
             except av.error.FFmpegError as e:
                 log.debug("decode error: %s", e)
                 continue
+            self.decoded += len(frames)
             rec = self.recorder
             if rec is not None:
                 for f in frames:
