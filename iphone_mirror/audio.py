@@ -35,6 +35,7 @@ class Player:
         self._started = False
         self.gain = 1.0
         self.muted = False
+        self.recorder = None  # record.Recorder while recording (muting only silences the speakers)
         self._stream = None
         try:
             import sounddevice as sd
@@ -63,6 +64,9 @@ class Player:
 
     def write(self, pcm: np.ndarray):
         """pcm: int16 array shaped (n, 2)."""
+        rec = self.recorder
+        if rec is not None:
+            rec.audio(pcm)
         with self._lock:
             self._chunks.append(pcm)
             self._buffered += len(pcm)

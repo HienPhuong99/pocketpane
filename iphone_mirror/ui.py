@@ -58,7 +58,7 @@ ZOOM_PER_NOTCH = 1.06
 ZOOM_MS = 30
 
 # Windows virtual-key codes: shortcuts must also work with non-Latin keyboard layouts
-VK_H, VK_J, VK_M, VK_U = 0x48, 0x4A, 0x4D, 0x55
+VK_H, VK_J, VK_M, VK_R, VK_U = 0x48, 0x4A, 0x4D, 0x52, 0x55
 VK_OEM_PLUS, VK_OEM_MINUS, VK_ADD, VK_SUBTRACT = 0xBB, 0xBD, 0x6B, 0x6D
 
 GREEN, ORANGE, RED = QColor("#30d158"), QColor("#ff9f0a"), QColor("#ff453a")
@@ -191,6 +191,8 @@ class PhoneWindow(QWidget):
         self._effects = []  # touch feedback: dict(kind, a, b, t, life), positions as fractions
         self._anim = QTimer(self, interval=16, timeout=self._tick)
         self._shadow = None  # ((width, height, dpr), QPixmap)
+        self._rec_timer = QTimer(self, interval=500, timeout=self.update)  # REC clock in the top bar
+        self._saved_folder = None  # opened when the "saved" notification is clicked
 
         screen = QApplication.primaryScreen().availableGeometry()
         ph = int(settings.get("phone_height") or 0) or int(screen.height() * 0.72)
@@ -401,6 +403,10 @@ class PhoneWindow(QWidget):
 
         if self.hover:
             self._paint_bar(p)
+        elif self.rx is not None and self.rx.recorder is not None:  # recording, bar hidden: red dot
+            p.setPen(Qt.NoPen)
+            p.setBrush(RED)
+            p.drawEllipse(QPointF(rect.x() + r * 0.55, rect.y() + r * 0.55), 5, 5)
         p.end()
 
     def _shadow_pixmap(self, rect, r) -> QPixmap:
@@ -578,13 +584,23 @@ class PhoneWindow(QWidget):
         name = self.client or "iPhone"
         fps = f"{self.fps:.0f} fps" if self.state == "mirroring" and self.fps else ""
         status = self._control_status()
+        rec = self._rec_label()
         sep = "  ·  "
-        labels = [sep.join(x for x in (name, fps, status) if x)]
+        labels = [sep.join(x for x in (rec, name, fps, status) if x)]
         if fps:
-            labels.append(sep.join(x for x in (name, status) if x))
+            labels.append(sep.join(x for x in (rec, name, status) if x))
         if status:
-            labels.append(status)
+            labels.append(sep.join(x for x in (rec, status) if x))
+        if rec:
+            labels.append(rec)
         return labels
+
+    def _rec_label(self) -> str:
+        rec = self.rx.recorder if self.rx else None
+        if rec is None:
+            return ""
+        s = int(rec.seconds)
+        return f"● REC {s // 60}:{s % 60:02d}"
 
     def _bar_label(self) -> str:
         return self._bar_labels()[0]
@@ -973,6 +989,8 @@ class PhoneWindow(QWidget):
                 self._phone("app_switcher")
             elif is_key(e, (Qt.Key_M,), (VK_M,)):
                 self._toggle_mute()
+            elif is_key(e, (Qt.Key_R,), (VK_R,)):
+                self._toggle_recording()
             elif is_key(e, (Qt.Key_U,), (VK_U,)):
                 self._toggle_control()
             else:
@@ -1016,6 +1034,11 @@ class PhoneWindow(QWidget):
             size.addAction(label, lambda k=k: self.set_phone_height(screen.height() * k))
         m.addSeparator()
         m.addAction("Save Screenshot", self.screenshot)
+        recording = bool(self.rx and self.rx.recorder)
+        rec = QAction("Record Screen\tCtrl+R", m, checkable=True, checked=recording)
+        rec.setEnabled(self.rx is not None)
+        rec.triggered.connect(self._toggle_recording)
+        m.addAction(rec)
         m.addAction("Rename PC...", self._rename)
         m.addAction("Open Log", self._open_log)
         m.addSeparator()
@@ -1076,12 +1099,41 @@ class PhoneWindow(QWidget):
             folder.mkdir(parents=True, exist_ok=True)
             path = folder / time.strftime("iPhone %Y-%m-%d %H-%M-%S.png")
             img.save(str(path))
-            if self._tray:
-                self._tray.showMessage("Screenshot saved", str(path), app_icon(), 3000)
-            else:
-                self._hint("Screenshot saved")
+            self._notify_saved("Screenshot saved", path)
         except Exception:
             log.exception("screenshot failed")
+
+    def _toggle_recording(self):
+        if self.rx is None:
+            return
+        if self.rx.recorder is None:
+            self.rx.start_recording(Path.home() / "Videos" / APP_NAME)
+            self._rec_timer.start()
+            self._hint("Recording - press Ctrl+R to stop")
+            return
+        # ponytail: stops on the GUI thread; the encoder drains at most ~3 s of queued frames
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            paths = self.rx.stop_recording()
+        finally:
+            QApplication.restoreOverrideCursor()
+        self._rec_timer.stop()
+        if paths:
+            self._notify_saved("Recording saved", paths[-1])
+        else:
+            self._hint("Nothing was recorded")
+        self.update()
+
+    def _notify_saved(self, title, path):
+        self._saved_folder = Path(path).parent
+        if self._tray:
+            self._tray.showMessage(title, f"{path}\nClick to open the folder", app_icon(), 4000)
+        else:
+            self._hint(title)
+
+    def _open_saved_folder(self):
+        if self._saved_folder and self._saved_folder.exists():
+            os.startfile(str(self._saved_folder))
 
     def _save_pos(self):
         self.settings["x"], self.settings["y"] = self.x(), self.y()
@@ -1105,6 +1157,7 @@ class PhoneWindow(QWidget):
         menu.addAction("Quit", QApplication.quit)
         tray.setContextMenu(menu)
         tray.activated.connect(lambda reason: self._show_front() if reason == QSystemTrayIcon.Trigger else None)
+        tray.messageClicked.connect(self._open_saved_folder)
         tray.show()
         self._tray = tray
         self._tray_menu = menu  # the tray does not take ownership of the menu

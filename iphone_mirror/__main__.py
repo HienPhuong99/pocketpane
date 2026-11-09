@@ -46,6 +46,7 @@ def parse_args():
     )
     p.add_argument("--port", type=int, help=f"RTSP port (default {net.PORT}, or {LOCAL_PORT} with --local)")
     p.add_argument("--control", action="store_true", help="start iPhone control (USB / WebDriverAgent) at launch")
+    p.add_argument("--record", action="store_true", help="start recording to Videos\\PocketPane at launch")
     p.add_argument("--grab", metavar="DIR", help="self-test: save a PNG of the window every 2 s")
     p.add_argument("--quit-after", type=float, default=0, help="self-test: exit after N seconds")
     return p.parse_args()
@@ -104,6 +105,8 @@ def main():
     rx.start()
     if args.control:
         ctrl.start()
+    if args.record:
+        win._toggle_recording()
     if args.grab:
         grab_dir = Path(args.grab)
         grab_dir.mkdir(parents=True, exist_ok=True)

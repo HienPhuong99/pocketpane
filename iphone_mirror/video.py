@@ -52,6 +52,7 @@ class VideoDecoder(threading.Thread):
         self.q = queue.Queue(maxsize=240)
         self.target = None  # (w, h) in device pixels, set by the UI
         self.last_frame = None  # full-resolution av.VideoFrame (for screenshots)
+        self.recorder = None  # record.Recorder while recording: gets every decoded frame
         self._codec = None
         self._stop = False
 
@@ -92,6 +93,10 @@ class VideoDecoder(threading.Thread):
             except av.error.FFmpegError as e:
                 log.debug("decode error: %s", e)
                 continue
+            rec = self.recorder
+            if rec is not None:
+                for f in frames:
+                    rec.video(f)
             if not frames or not self.q.empty():
                 continue  # behind: skip conversion, keep decoding references
             frame = frames[-1]

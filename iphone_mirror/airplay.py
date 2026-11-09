@@ -11,6 +11,7 @@ from . import discovery, net
 from .audio import AudioStream, Player
 from .fairplay import FairPlay
 from .pairing import PairingSession, ServerIdentity
+from .record import Recorder
 from .video import MirrorStream, VideoDecoder
 
 log = logging.getLogger(__name__)
@@ -379,6 +380,7 @@ class Receiver:
         self.on_event = on_event
         self.decoder = VideoDecoder(on_frame)
         self.player = None
+        self.recorder = None
         self.volume_db = 0.0
         self.muted = False
         self.loop = None
@@ -400,6 +402,7 @@ class Receiver:
             return None
         if self.player is None:
             self.player = Player()
+            self.player.recorder = self.recorder
             self._apply_volume()
         return self.player
 
@@ -417,6 +420,25 @@ class Receiver:
         db = self.volume_db
         self.player.muted = self.muted or db <= -144
         self.player.gain = 0.0 if db <= -144 else max(0.0, min(1.0, 10 ** (db / 20.0)))
+
+    # ---------------------------------------------------------------- recording
+    def start_recording(self, folder) -> Recorder:
+        if self.recorder is None:
+            self.recorder = Recorder(folder, audio=bool(self.settings.get("audio", True)))
+            self.decoder.recorder = self.recorder
+            if self.player is not None:
+                self.player.recorder = self.recorder
+        return self.recorder
+
+    def stop_recording(self) -> list:
+        """Finish the recording; returns the saved files (empty if nothing was recorded)."""
+        rec, self.recorder = self.recorder, None
+        if rec is None:
+            return []
+        self.decoder.recorder = None
+        if self.player is not None:
+            self.player.recorder = None
+        return rec.stop()
 
     # ---------------------------------------------------------------- mirror ownership
     async def claim_mirror(self, conn):
@@ -484,6 +506,7 @@ class Receiver:
         self.loop.call_soon_threadsafe(lambda: self.loop.run_in_executor(None, reannounce))
 
     def stop(self):
+        self.stop_recording()
         logging.getLogger("asyncio").setLevel(logging.CRITICAL)  # pending accept tasks at exit are harmless
         if self.advertiser:
             try:
