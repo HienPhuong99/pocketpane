@@ -4,7 +4,9 @@ The iPhone sends a key frame only when mirroring starts or the format changes, s
 incoming H.264 stream cannot simply be copied into a file from the middle. Decoded frames
 are re-encoded instead (libx264 'ultrafast', at most MAX_FPS) on a thread of their own;
 when the encoder falls behind, frames are dropped rather than queued. PCM audio from the
-player is encoded as AAC into the same file. When the video size changes (the iPhone
+player is encoded as AAC into the same file; audio is never dropped. The MP4 is written
+fragmented (a key frame at least every GOP_S seconds), so a crash, a kill or a power cut
+loses only the last few seconds instead of the whole file. When the video size changes (the iPhone
 rotates), the current file is finished and a new part is started, because an MP4 track
 cannot change its size.
 
@@ -26,7 +28,10 @@ log = logging.getLogger(__name__)
 
 MAX_FPS = 30
 RATE = 44100
-QUEUE = 90  # video frames + audio chunks waiting for the encoder thread
+QUEUE = 90  # video frames waiting for the encoder thread; more are dropped
+GOP_S = 2  # seconds between key frames = longest stretch a hard kill can lose
+AUDIO_RESYNC = RATE // 10  # audio this much later than its expected position starts a new run
+MOVFLAGS = "frag_keyframe+empty_moov+default_base_moof"
 MS = Fraction(1, 1000)
 
 
@@ -41,7 +46,8 @@ class Recorder:
         self._part_t0 = self.t0  # pts 0 of the current file
         self.dropped = 0
         self.frames = 0
-        self._q = queue.Queue(maxsize=QUEUE)
+        self.error = None  # set (str) when the encoder thread failed; nothing is recorded any more
+        self._q = queue.Queue()  # bounded for video only (see _put), so audio is never dropped
         self._last_video = -1.0
         self._last_pts = -1
         self._out = self._vs = self._as = None
@@ -55,25 +61,30 @@ class Recorder:
         return time.perf_counter() - self.t0
 
     # ------------------------------------------------------------ producers (any thread)
+    @property
+    def alive(self) -> bool:
+        return self.error is None and self._thread.is_alive()
+
     def video(self, frame):
         now = time.perf_counter()
-        if now - self._last_video < 1 / MAX_FPS:
+        if self.error is not None or now - self._last_video < 1 / MAX_FPS:
             return
         self._last_video = now
         self._put(("v", frame, now))
 
     def audio(self, pcm):
-        if self.with_audio:
-            self._put(("a", pcm, time.perf_counter()))
+        if self.with_audio and self.error is None:
+            self._q.put(("a", pcm, time.perf_counter()))
 
     def _put(self, item):
-        try:
-            self._q.put_nowait(item)
-        except queue.Full:
+        if self._q.qsize() >= QUEUE:  # the encoder is behind: skip the frame, keep the mirror smooth
             self.dropped += 1
+            return
+        self._q.put(item)
 
     def stop(self) -> list:
-        self._q.put(None)  # blocks briefly if full: the encoder thread is draining it
+        """Finish the file. Never blocks for long, also when the encoder thread has died."""
+        self._q.put(None)  # the queue is unbounded: this cannot block
         self._thread.join(timeout=10)
         return [p for p in self.paths if p.exists()]
 
@@ -89,8 +100,11 @@ class Recorder:
                     self._encode_video(data, t)
                 elif self._out is not None:
                     self._encode_audio(data, t)
-        except Exception:
+        except Exception as e:
             log.exception("recording failed")
+            self.error = str(e) or type(e).__name__
+            while not self._q.empty():  # free the memory of what will never be encoded
+                self._q.get_nowait()
         finally:
             self._close()
             log.info("recording stopped: %d frames, %d dropped, %s", self.frames, self.dropped,
@@ -101,8 +115,10 @@ class Recorder:
         name = f"iPhone {self.stamp}" + (f" ({part})" if part > 1 else "") + ".mp4"
         self.folder.mkdir(parents=True, exist_ok=True)
         path = self.folder / name
-        out = av.open(str(path), "w")
-        vs = out.add_stream("libx264", rate=MAX_FPS, options={"preset": "ultrafast", "crf": "23"})
+        # flush_packets: hand every fragment to the OS at once, or a kill also loses the AVIO buffer
+        out = av.open(str(path), "w", options={"movflags": MOVFLAGS, "flush_packets": "1"})
+        vs = out.add_stream("libx264", rate=MAX_FPS,
+                            options={"preset": "ultrafast", "crf": "23", "g": str(GOP_S * MAX_FPS)})
         vs.width, vs.height = w, h
         vs.pix_fmt = "yuv420p"
         vs.time_base = vs.codec_context.time_base = MS  # millisecond pts: frames arrive at a variable rate
@@ -129,7 +145,10 @@ class Recorder:
                     out.mux(p)
         except Exception:
             log.exception("could not finish the recording")
-        out.close()
+        try:
+            out.close()
+        except Exception:
+            log.exception("could not close the recording")
 
     def _encode_video(self, frame, t):
         w, h = frame.width & ~1, frame.height & ~1  # yuv420p needs even sizes
@@ -145,8 +164,8 @@ class Recorder:
 
     def _encode_audio(self, pcm, t):
         start = int((t - self._part_t0) * RATE) - len(pcm)  # the chunk ends about now
-        if self._audio_next is None or start > self._audio_next + RATE // 4:
-            self._audio_next = max(0, start)  # first chunk, or a gap (audio paused)
+        if self._audio_next is None or start > self._audio_next + AUDIO_RESYNC:
+            self._audio_next = max(0, start)  # first chunk, or a gap (audio paused or packets lost)
         f = av.AudioFrame.from_ndarray(pcm.reshape(1, -1), format="s16", layout="stereo")
         f.sample_rate = RATE
         f.pts = self._audio_next

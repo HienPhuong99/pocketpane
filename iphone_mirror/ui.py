@@ -219,7 +219,7 @@ class PhoneWindow(QWidget):
         self._effects = []  # touch feedback: dict(kind, a, b, t, life), positions as fractions
         self._anim = QTimer(self, interval=16, timeout=self._tick)
         self._shadow = None  # ((width, height, dpr), QPixmap)
-        self._rec_timer = QTimer(self, interval=500, timeout=self.update)  # REC clock in the top bar
+        self._rec_timer = QTimer(self, interval=500, timeout=self._rec_tick)  # REC clock in the top bar
         self._saved_folder = None  # opened when the "saved" notification is clicked
 
         screen = QApplication.primaryScreen().availableGeometry()
@@ -1364,6 +1364,7 @@ class PhoneWindow(QWidget):
             self._hint("Recording - press Ctrl+R to stop")
             return
         # ponytail: stops on the GUI thread; the encoder drains at most ~3 s of queued frames
+        # (Recorder.stop never blocks on a dead encoder)
         QApplication.setOverrideCursor(Qt.WaitCursor)
         try:
             paths = self.rx.stop_recording()
@@ -1375,6 +1376,21 @@ class PhoneWindow(QWidget):
         else:
             self._hint("Nothing was recorded")
         self.update()
+
+    def _rec_tick(self):
+        """REC clock; also notices an encoder that failed (disk full, folder not writable)."""
+        rec = self.rx.recorder if self.rx else None
+        if rec is not None and not rec.alive:
+            error = rec.error or "the encoder stopped"
+            self._toggle_recording()  # finishes what was written so far
+            self._show_message("Recording stopped", f"Recording failed: {error}")
+        self.update()
+
+    def _show_message(self, title, text):
+        if self._tray:
+            self._tray.showMessage(title, text, app_icon(), 6000)
+        else:
+            self._hint(text)
 
     def _notify_saved(self, title, path):
         self._saved_folder = Path(path).parent

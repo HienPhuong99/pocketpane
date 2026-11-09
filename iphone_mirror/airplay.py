@@ -426,6 +426,9 @@ class Receiver:
     def start_recording(self, folder) -> Recorder:
         if self.recorder is None:
             self.recorder = Recorder(folder, audio=bool(self.settings.get("audio", True)))
+            if self.decoder.last_frame is not None and self._mirror_owner is not None:
+                # iOS sends frames only when the screen changes: start from what is shown now
+                self.recorder.video(self.decoder.last_frame)
             self.decoder.recorder = self.recorder
             if self.player is not None:
                 self.player.recorder = self.recorder

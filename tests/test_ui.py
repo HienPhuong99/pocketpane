@@ -63,6 +63,25 @@ class ScreenshotTest(unittest.TestCase):
         self.assertIn("Nothing", win._bar_label())
 
 
+class RecordingFailureTest(unittest.TestCase):
+    def test_failed_encoder_stops_recording_and_tells_the_user(self):
+        win = make_window()
+        win._tray = None
+        rx = win.rx
+        rx.recorder = SimpleNamespace(alive=False, error="disk full", seconds=3.0)
+
+        def stop_recording():
+            rx.recorder = None
+            return []
+
+        rx.stop_recording = stop_recording
+        win._rec_timer.start()
+        win._rec_tick()
+        self.assertIsNone(rx.recorder)
+        self.assertFalse(win._rec_timer.isActive())
+        self.assertIn("Recording failed: disk full", win._bar_label())
+
+
 class FullScreenTest(unittest.TestCase):
     def test_f11_and_esc(self):
         win = make_window()
