@@ -15,6 +15,8 @@ set "VENV=%DATA%\venv"
 set "PORTABLE=%DATA%\python\tools\python.exe"
 set "PY_URL=https://www.nuget.org/api/v2/package/python/3.12.10"
 set "PY_SHA256=0eb85c2dfccccf1b17352de4c397f69194035b7d37149eacc16f1147d93de3b8"
+rem A usable Python: 3.11+, 64-bit (PySide6 has no 32-bit wheels), with pip and venv.
+set "PROBE=import sys, pip, venv; sys.exit(sys.version_info < (3, 11) or sys.maxsize < 2**32)"
 set "PAUSE=pause"
 if defined PP_NOPAUSE set "PAUSE=cd ."
 
@@ -23,10 +25,13 @@ rem --- stub: running it fails, so every candidate is actually run, not just loo
 set "PY="
 call :try_python python
 call :try_python py -3
-call :try_python "%PORTABLE%"
+call :try_portable
 if not defined PY call :get_python || (%PAUSE% & exit /b 1)
 echo Using Python: %PY%
 
+rem A venv whose base Python was uninstalled or moved still has Scripts\python.exe but
+rem cannot run: rebuild it, or re-running the installer could never repair it.
+if exist "%VENV%\Scripts\python.exe" call :check_venv
 if not exist "%VENV%\Scripts\python.exe" (
   echo Creating the Python environment in "%VENV%" ...
   %PY% -m venv --without-pip "%VENV%" || (%PAUSE% & exit /b 1)
@@ -52,8 +57,22 @@ echo Done. Start "PocketPane" from the Desktop or the Start menu.
 exit /b 0
 
 :try_python
+rem Only for plain command names (python, py -3): paths go through :try_portable, because
+rem CALL doubles carets and nested quotes break on an ampersand in a path.
 if defined PY exit /b 0
-%* -c "import sys; sys.exit(sys.version_info < (3, 11))" >nul 2>nul && set "PY=%*"
+%* -c "%PROBE%" >nul 2>nul && set "PY=%*"
+exit /b 0
+
+:try_portable
+if defined PY exit /b 0
+if not exist "%PORTABLE%" exit /b 0
+"%PORTABLE%" -c "%PROBE%" >nul 2>nul && set PY="%PORTABLE%"
+exit /b 0
+
+:check_venv
+"%VENV%\Scripts\python.exe" -c "import sys; sys.exit(sys.version_info < (3, 11))" >nul 2>nul && exit /b 0
+echo The Python environment in "%VENV%" no longer works; creating it again...
+rmdir /s /q "%VENV%"
 exit /b 0
 
 :get_python
@@ -63,7 +82,7 @@ set "PP_PY_URL=%PY_URL%"
 set "PP_PY_SHA256=%PY_SHA256%"
 set "PP_PY_DIR=%DATA%\python"
 powershell -NoProfile -ExecutionPolicy Bypass -File "%APPDIR%\tools\get_python.ps1" || goto :get_python_failed
-call :try_python "%PORTABLE%"
+call :try_portable
 if defined PY exit /b 0
 :get_python_failed
 echo Could not set up Python automatically. Install Python 3.11 or newer from
