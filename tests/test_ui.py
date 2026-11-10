@@ -215,11 +215,33 @@ class ControlShortcutsTest(unittest.TestCase):
         win.on_control(ui.OFF, "")
         self.assertFalse(win.testAttribute(Qt.WA_InputMethodEnabled))
 
+    def test_composing_word_goes_out_before_a_tap(self):
+        from PySide6.QtGui import QInputMethodEvent
+
+        win = self.window()
+        QApplication.sendEvent(win, QInputMethodEvent("xin", []))  # still composing
+        with mock.patch.object(ui.QGuiApplication, "inputMethod") as im:
+            QTest.mousePress(win, Qt.LeftButton, pos=win.phone_rect().center().toPoint())
+            im.return_value.reset.assert_called_once()
+        self.assertEqual(win.ctrl.calls, [("type_text", "xin")])  # sent before the tap
+        commit = QInputMethodEvent()
+        commit.setCommitString("xin")  # Windows commits the reset composition: not typed twice
+        QApplication.sendEvent(win, commit)
+        win._flush_type()
+        self.assertEqual(win.ctrl.calls, [("type_text", "xin")])
+        QTest.mouseRelease(win, Qt.LeftButton, pos=win.phone_rect().center().toPoint())
+        win._flush_tap()
+        self.assertEqual([c[0] for c in win.ctrl.calls], ["type_text", "tap"])
+
     def test_unikey_style_unicode_keys_and_backspace(self):
         win = self.window()
+        from PySide6.QtCore import QEvent
+        from PySide6.QtGui import QKeyEvent
+
         QTest.keyClicks(win, "vie")  # Unikey: plain keys, then Backspace + the composed letter
         QTest.keyClick(win, Qt.Key_Backspace)
-        QTest.keyClicks(win, "ệ")
+        # (QTest.keyClicks crashes the interpreter on characters outside Latin-1: send the event)
+        QApplication.sendEvent(win, QKeyEvent(QEvent.KeyPress, 0, Qt.NoModifier, "ệ"))
         win._flush_type()
         self.assertEqual(win.ctrl.calls, [("type_text", "vie\bệ")])
 
@@ -297,9 +319,32 @@ class SetupWindowTest(unittest.TestCase):
         with mock.patch.object(setup_window.usb, "download_wda_ipa", return_value=Path("C:/x/WDA.ipa")), \
                 mock.patch.object(setup_window, "_show_in_explorer") as explorer:
             self.buttons(w)["Download WebDriverAgent"].click()
-            self.assertTrue(wait_until(lambda: "Saved" in w.status.text()))
+            self.assertTrue(wait_until(lambda: "Saved" in w.note.text()))
         explorer.assert_called_once()
         self.assertIsNone(w._busy)
+
+    def test_an_unexpected_action_error_is_reported_and_kept(self):
+        from iphone_mirror import setup_window
+        from iphone_mirror.control import setup
+
+        w = self.open(self.report(("wda", setup.A_GET_WDA)))
+        with mock.patch.object(setup_window.usb, "download_wda_ipa", side_effect=ValueError("Bad CRC-32")):
+            self.buttons(w)["Download WebDriverAgent"].click()
+            self.assertTrue(wait_until(lambda: w._busy is None))
+        self.assertIn("Bad CRC-32", w.note.text())
+        w._on_checked(self.report(("wda", setup.A_GET_WDA)))  # later checks keep the message
+        self.assertTrue(w.note.isVisible())
+        self.assertIn("Bad CRC-32", w.note.text())
+
+    def test_esc_stops_the_periodic_checks(self):
+        from PySide6.QtCore import Qt as QtNS
+
+        w = self.open(self.report())
+        self.assertTrue(w._timer.isActive())
+        QTest.keyClick(w, QtNS.Key_Escape)
+        self.assertFalse(w.isVisible())
+        self.assertFalse(w._timer.isActive())
+        self.assertTrue(w._stop.is_set())
 
     def test_control_ready_warns_about_expiry(self):
         win = make_window()

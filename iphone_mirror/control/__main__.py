@@ -127,7 +127,7 @@ def _check_usb():
                 msg, advice = "Could not list the apps on the iPhone", st.detail
         else:  # signature
             msg = f"WebDriverAgent signature: {st.detail[0].lower()}{st.detail[1:]}"
-            advice = usb.MSG_EXPIRED if st.actions else None  # expired or expiring soon
+            advice = usb.MSG_EXPIRED if st.state == setup.FAIL else st.how if st.state == setup.WARN else None
         {setup.OK: ok, setup.SKIP: ok, setup.WARN: warn, setup.FAIL: fail}[st.state](msg, advice)
         if st.state == setup.FAIL:
             return False

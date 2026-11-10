@@ -100,31 +100,46 @@ def _parse_date(value):
     return d if d.tzinfo else d.replace(tzinfo=datetime.timezone.utc)
 
 
-def profile_matches(profile, bundle):
-    """Does this provisioning profile cover the app `bundle`? (application-identifier is
-    'TEAMID.bundle.id' or a wildcard 'TEAMID.*' / 'TEAMID.com.example.*')"""
+def profile_match(profile, bundle):
+    """How this provisioning profile covers the app `bundle`: "exact" ('TEAMID.bundle.id'),
+    "wildcard" ('TEAMID.*', 'TEAMID.com.example.*') or None."""
     ent = profile.get("Entitlements") if isinstance(profile, dict) else None
     app_id = str((ent or {}).get("application-identifier") or "")
     if "." not in app_id or not bundle:
-        return False
+        return None
     pattern = app_id.split(".", 1)[1]
     if pattern.endswith("*"):
-        return bundle.startswith(pattern[:-1])
-    return pattern == bundle
+        return "wildcard" if bundle.startswith(pattern[:-1]) else None
+    return "exact" if pattern == bundle else None
+
+
+def profile_matches(profile, bundle):
+    return profile_match(profile, bundle) is not None
 
 
 def wda_expiry(udid, bundle, cancel=None):
     """Expiration date of the newest provisioning profile that covers the WDA bundle, or None
     if it cannot be told (no matching profile, or the list could not be read)."""
-    code, out, _ = usb.pmd3("provision", "list", "--udid", udid, timeout=60, cancel=cancel)
+    try:
+        code, out, _ = usb.pmd3("provision", "list", "--udid", udid, timeout=60, cancel=cancel)
+    except usb.Cancelled:
+        raise
+    except usb.UsbError:  # timed out, or pymobiledevice3 could not start: unknown, not fatal
+        return None
     if code:
         return None
     profiles = usb._json(out)
     if not isinstance(profiles, list):
         return None
-    dates = [_parse_date(p.get("ExpirationDate")) for p in profiles if profile_matches(p, bundle)]
-    dates = [d for d in dates if d is not None]
-    return max(dates) if dates else None
+    # the app's own (exact) profile decides; an unrelated wildcard profile (another team, an
+    # enterprise app) must not hide that the WDA signature is about to expire
+    for kind in ("exact", "wildcard"):
+        dates = [_parse_date(p.get("ExpirationDate")) for p in profiles
+                 if isinstance(p, dict) and profile_match(p, bundle) == kind]
+        dates = [d for d in dates if d is not None]
+        if dates:
+            return max(dates)
+    return None
 
 
 def days_left(expires, now=None):

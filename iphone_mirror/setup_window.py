@@ -142,6 +142,12 @@ class SetupWindow(QDialog):
         self.status = QLabel("Checking...")
         self.status.setWordWrap(True)
         self.status.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        # result of the last button action: stays until the next action (checks do not touch it)
+        self.note = QLabel()
+        self.note.setWordWrap(True)
+        self.note.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.note.setStyleSheet("padding: 6px; background: rgba(127, 127, 127, 40); border-radius: 6px;")
+        self.note.hide()
         again = QPushButton("Check again")
         again.clicked.connect(self.recheck)
         close = QPushButton("Close")
@@ -153,6 +159,7 @@ class SetupWindow(QDialog):
         layout = QVBoxLayout(self)
         layout.addWidget(intro)
         layout.addWidget(scroll, 1)
+        layout.addWidget(self.note)
         layout.addLayout(bottom)
         self.resize(560, 640)
 
@@ -167,10 +174,11 @@ class SetupWindow(QDialog):
         self._timer.start()
         self.recheck()
 
-    def closeEvent(self, e):
+    def hideEvent(self, e):
+        # also Esc / reject(), which hide the dialog without a closeEvent
         self._timer.stop()
         self._stop.set()  # a running check stops its pymobiledevice3 call
-        super().closeEvent(e)
+        super().hideEvent(e)
 
     def recheck(self):
         if self._checking or self._busy:
@@ -224,6 +232,7 @@ class SetupWindow(QDialog):
         elif action in (setup.A_REVEAL_DEV_MODE, setup.A_GET_WDA) and not self._busy:
             self._busy = action
             self._set_busy(True)
+            self.note.hide()
             self.status.setText("Working...")
             threading.Thread(target=self._action_thread, args=(action,), name="setup-action", daemon=True).start()
 
@@ -246,8 +255,9 @@ class SetupWindow(QDialog):
                 _show_in_explorer(path)
         except usb.UsbError as e:
             msg = str(e)
-        except OSError as e:
-            msg = f"Failed: {e}"
+        except Exception as e:  # e.g. a download cut off half-way: never leave the window busy
+            log.exception("setup action %s failed", action)
+            msg = f"Failed: {e or type(e).__name__}"
         try:
             self.action_done.emit(action, msg)
         except RuntimeError:
@@ -255,9 +265,11 @@ class SetupWindow(QDialog):
 
     def _on_action_done(self, action, message):
         self._busy = None
-        self.status.setText(message)
+        self.note.setText(message)
+        self.note.show()
+        self.status.setText("")
         self._set_busy(False)
-        QTimer.singleShot(1500, self.recheck)
+        QTimer.singleShot(1500, self, self.recheck)  # bound to the dialog: dropped if it is deleted
 
 
 def _show_in_explorer(path):

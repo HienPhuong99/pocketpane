@@ -34,12 +34,29 @@ class ProfileTest(unittest.TestCase):
         self.assertFalse(setup.profile_matches(p("TEAM1.com.example.WebDriverAgentRunner"), BUNDLE))
         self.assertFalse(setup.profile_matches({}, BUNDLE))
 
-    def test_expiry_is_the_newest_matching_profile(self):
+    def test_expiry_is_the_newest_exact_profile(self):
         out = profiles((f"T.{BUNDLE}", NOW + datetime.timedelta(days=1)),
+                       (f"T.{BUNDLE}", NOW + datetime.timedelta(days=3)),  # re-installed later
                        ("T.*", NOW + datetime.timedelta(days=5)),
                        ("T.com.other", NOW + datetime.timedelta(days=300)))
         with mock.patch.object(usb, "pmd3", return_value=(0, out, "")):
+            self.assertEqual(setup.wda_expiry("UDID1", BUNDLE), NOW + datetime.timedelta(days=3))
+        only_wildcard = profiles(("T.*", NOW + datetime.timedelta(days=5)))
+        with mock.patch.object(usb, "pmd3", return_value=(0, only_wildcard, "")):
             self.assertEqual(setup.wda_expiry("UDID1", BUNDLE), NOW + datetime.timedelta(days=5))
+
+    def test_an_unrelated_wildcard_does_not_hide_the_wda_profile(self):
+        out = profiles((f"FREE1.{BUNDLE}", NOW + datetime.timedelta(days=1)),
+                       ("CORP9.*", NOW + datetime.timedelta(days=300)))
+        with mock.patch.object(usb, "pmd3", return_value=(0, out, "")):
+            self.assertEqual(setup.wda_expiry("UDID1", BUNDLE), NOW + datetime.timedelta(days=1))
+
+    def test_a_failing_profile_list_is_unknown_not_fatal(self):
+        with mock.patch.object(usb, "pmd3", side_effect=usb.UsbError("timed out")):
+            self.assertIsNone(setup.wda_expiry("UDID1", BUNDLE))
+        with mock.patch.object(usb, "pmd3", side_effect=usb.Cancelled()):
+            with self.assertRaises(usb.Cancelled):
+                setup.wda_expiry("UDID1", BUNDLE)
 
     def test_expiry_unknown(self):
         with mock.patch.object(usb, "pmd3", return_value=(1, "", "boom")):

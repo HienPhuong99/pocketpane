@@ -24,6 +24,7 @@ from PySide6.QtGui import (
     QColor,
     QFont,
     QFontMetrics,
+    QGuiApplication,
     QIcon,
     QImage,
     QLinearGradient,
@@ -218,6 +219,8 @@ class PhoneWindow(QWidget):
         self._wheel_timer = QTimer(self, singleShot=True, interval=WHEEL_BATCH_MS, timeout=self._flush_wheel)
         self._type_buf = ""
         self._type_timer = QTimer(self, singleShot=True, interval=TYPE_BATCH_MS, timeout=self._flush_type)
+        self._preedit = ""  # text an input method is still composing
+        self._ime_forced = None  # composing text sent by _commit_composition: skip it if the IME commits it too
         self._effects = []  # touch feedback: dict(kind, a, b, t, life), positions as fractions
         self._anim = QTimer(self, interval=16, timeout=self._tick)
         self._shadow = None  # ((width, height, dpr), QPixmap)
@@ -928,6 +931,7 @@ class PhoneWindow(QWidget):
             else:
                 self._hint("Turn on iPhone control first (Ctrl+U)")
             return
+        self._commit_composition()
         self._flush_tap()
         getattr(self.ctrl, method)(*args)
 
@@ -1095,6 +1099,7 @@ class PhoneWindow(QWidget):
                 return
         alt = bool(e.modifiers() & Qt.AltModifier)
         if self._gestures_on() and not alt and self.phone_rect().contains(pos):
+            self._commit_composition()
             self._gesture_begin(pos)
             return
         if not self.fullscreen:
@@ -1177,6 +1182,7 @@ class PhoneWindow(QWidget):
                     self._apply_zoom()
             return
         if dy and self._gestures_on() and self.phone_rect().contains(e.position()):
+            self._commit_composition()
             if not self._wheel_timer.isActive():
                 self._wheel_pos = to_fraction(self.phone_rect(), e.position())
                 self._wheel_timer.start()
@@ -1185,9 +1191,21 @@ class PhoneWindow(QWidget):
     def inputMethodEvent(self, e):
         """Text composed by an input method: type what it commits (the preview is not sent)."""
         text = e.commitString()
-        if text and self._control_ready():
+        forced, self._ime_forced = self._ime_forced, None
+        if text and text != forced and self._control_ready():
             self._type(text)
+        self._preedit = e.preeditString()
         e.accept()
+
+    def _commit_composition(self):
+        """Before a tap, scroll, shortcut or paste: send the word the IME is still composing, so it
+        lands in the field it was typed for, ahead of the action."""
+        if self._preedit and self._control_ready():
+            self._type(self._preedit)
+            self._ime_forced, self._preedit = self._preedit, ""
+            QGuiApplication.inputMethod().reset()  # end the composition (Windows may commit it: skipped)
+        if self._type_buf:
+            self._flush_type()
 
     def inputMethodQuery(self, query):
         if query == Qt.ImEnabled:
