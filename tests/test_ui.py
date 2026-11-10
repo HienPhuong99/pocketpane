@@ -199,6 +199,33 @@ class FrameDisplayTest(unittest.TestCase):
         self.assertEqual((win.image.width(), win.image.height()), win._target())
         win.close()
 
+    def test_frame_decoded_just_before_the_window_showed_is_still_drawn(self):
+        win = make_window()
+        win.show()
+        win.hide()
+        win.on_event("mirror_stopped", {})
+        win.on_event("connecting", {"name": "Test iPhone"})  # shows the window; nothing to scale yet
+        self.assertTrue(win.isVisible())
+        win.on_frame(None, 60, 128)  # the decoder still saw a hidden window for this frame
+        self.assertEqual((win.image.width(), win.image.height()), win._target())
+        win.close()
+
+    def test_first_picture_and_stream_info_repaint_the_whole_window(self):
+        win = make_window()
+        frame = np.full((128, 60, 4), 255, dtype=np.uint8)
+        with mock.patch.object(win, "update") as update:
+            win.on_frame(frame, 60, 128)  # mirroring already: only the phone screen
+            update.assert_called_once_with(win.phone_rect().toAlignedRect())
+            update.reset_mock()
+            win.on_event("paused", {})
+            update.reset_mock()
+            win.on_frame(frame, 60, 128)  # the state changes: everything
+            update.assert_called_once_with()
+            update.reset_mock()
+            win.show_stats = True
+            win.on_frame(frame, 60, 128)
+            update.assert_called_once_with()
+
     def test_resize_scales_the_still_frame_again(self):
         win = make_window()
         win.show()

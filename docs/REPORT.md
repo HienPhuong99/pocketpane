@@ -134,7 +134,18 @@ Thay đổi khác:
 (7,7 → 3,8 ms/frame) nhưng mỗi frame lại chậm hơn (6,3 → 11,9 ms) vì phải chép ảnh từ card về,
 nên hình trễ hơn. Cũng đã thử vẽ ảnh bằng `drawImage` thay cho brush: chậm hơn, nên giữ brush.
 
-Test tăng từ 104 lên **109, tất cả pass**. Đã chạy end-to-end với iPhone giả bằng cả mã nguồn
+Sau đó chạy một vòng review phản biện (2 reviewer, mỗi lỗi qua 1 skeptic cố bác bỏ). Kết quả:
+4 cáo buộc, **3 được xác nhận và tái hiện, cả 3 đều nhẹ và đã sửa**; 1 bị bác (vẫn sửa vì chỉ
+tốn một dòng):
+
+- Frame đầu của phiên được decode đúng lúc cửa sổ còn ẩn thì cửa sổ hiện ra mà chưa có hình,
+  cho tới frame kế tiếp. Chỉ xảy ra khi giao diện bị đứng hơn 100 ms đúng lúc iPhone kết nối.
+- Frame đầu của phiên chỉ vẽ lại vùng màn hình, nên viền đen 1 pixel quanh máy thiếu nửa ngoài
+  cho tới lần vẽ lại toàn cửa sổ.
+- Ở cửa sổ rất nhỏ, khung thông số (Ctrl+I) tràn ra ngoài vùng màn hình và phần tràn không
+  được vẽ lại.
+
+Test tăng từ 104 lên **111, tất cả pass**. Đã chạy end-to-end với iPhone giả bằng cả mã nguồn
 lẫn bản `PocketPane.exe` mới build; 8 lệnh pymobiledevice3 mà app dùng vẫn chạy trong bản build.
 **Chưa đo với iPhone thật.**
 

@@ -429,6 +429,10 @@ class PhoneWindow(QWidget):
 
     def on_frame(self, arr, src_w, src_h):
         """A decoded frame. arr is None while the window is hidden (see _update_visible)."""
+        # A frame normally repaints only the phone screen. The whole window is needed when the
+        # first picture of a session arrives (the bezel changes), and while the stream info box
+        # is shown (in a small window it reaches past the phone screen).
+        everything = self.image is None or self.state != "mirroring" or self.show_stats
         if arr is not None:
             self._set_image(arr)
         aspect = src_w / src_h
@@ -442,6 +446,8 @@ class PhoneWindow(QWidget):
         if self.state != "mirroring":
             self.state = "mirroring"
             self._update_awake()
+        if arr is None and self._on_screen():
+            self._rescale()  # decoded while the window was still hidden, shown by now
         self._frames += 1
         now = time.time()
         if now - self._fps_t >= 1:
@@ -450,10 +456,11 @@ class PhoneWindow(QWidget):
             self.kbps = (total - self._bytes0) * 8 / 1000 / (now - self._fps_t)
             self._bytes0 = total
             self._frames, self._fps_t = 0, now
-            if self.hover:
-                self.update()  # the fps in the top bar
-        # only the phone screen changed: the shadow and the top bar are not painted again
-        self.update(self.phone_rect().toAlignedRect())
+            everything = everything or self.hover  # the fps in the top bar
+        if everything:
+            self.update()
+        else:  # the shadow and the top bar are not painted again
+            self.update(self.phone_rect().toAlignedRect())
 
     def on_event(self, event, info):
         log.debug("ui event %s %s", event, info)
