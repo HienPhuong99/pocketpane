@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PocketPane – Chọn hướng thương mại</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--fg:#1d2330;--mute:#5b6475;--acc:#2563eb;--ok:#15803d;--bd:#dde1e8}
+@media (prefers-color-scheme:dark){:root{--bg:#14171c;--card:#1d2128;--fg:#e8ebf0;--mute:#9aa3b2;--acc:#60a5fa;--ok:#4ade80;--bd:#2d333d}}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 system-ui,sans-serif}
+main{max-width:760px;margin:auto;padding:24px 16px 80px}
+h1{font-size:22px;margin:0 0 4px}p.sub{color:var(--mute);margin:0 0 24px}
+fieldset{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin:0 0 18px}
+legend{font-weight:600;padding:0 6px}
+.q{color:var(--mute);margin:0 0 10px}
+label{display:block;border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin:8px 0;cursor:pointer}
+label:has(input:checked){border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+.rec{color:var(--ok);font-size:12px;font-weight:700;margin-left:6px}
+label small{display:block;color:var(--mute);margin:4px 0 0 24px}
+textarea{width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--fg);font:inherit}
+button{background:var(--acc);color:#fff;border:0;border-radius:10px;padding:12px 18px;font-size:15px;cursor:pointer}
+pre{white-space:pre-wrap;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px}
+</style></head><body><main>
+<h1>PocketPane – chọn hướng thương mại</h1>
+<p class="sub">Chi tiết nằm trong <code>docs/KE-HOACH-THUONG-MAI.md</code>. Chọn xong bấm “Copy kết quả” rồi dán vào chat. Lựa chọn có nhãn <span class="rec">GỢI Ý</span> là lựa chọn mình khuyên dùng.</p>
+
+<fieldset><legend>1. Đã thử với iPhone thật chưa?</legend>
+<p class="q">Báo cáo cũ ghi app mới chỉ chạy với iPhone giả. Câu trả lời quyết định việc đầu tiên phải làm.</p>
+<label><input type="radio" name="q1" value="Chưa thử" checked> <b>Chưa thử</b>
+<small>Việc đầu tiên sẽ là thử mirror, trước mọi việc khác.</small></label>
+<label><input type="radio" name="q1" value="Đã thử, chạy ổn"> <b>Đã thử, chạy ổn</b>
+<small>Bỏ qua bước kiểm chứng lõi, đi thẳng vào đóng gói.</small></label>
+<label><input type="radio" name="q1" value="Đã thử, có lỗi"> <b>Đã thử, có lỗi</b>
+<small>Ghi lỗi vào ô Ghi chú ở cuối. Sửa lỗi này trước.</small></label>
+</fieldset>
+
+<fieldset><legend>2. Mô hình giấy phép</legend>
+<p class="q">App đang là GPL-3.0: được bán, nhưng người mua có quyền lấy mã nguồn và phát lại.</p>
+<label><input type="radio" name="q2" value="A. Giữ GPL, bán bản chính thức" checked> <b>A. Giữ mã nguồn mở, bán bản chính thức đã ký</b><span class="rec">GỢI Ý</span>
+<small>Ít việc nhất, sạch về giấy phép. Krita làm đúng cách này. Nhược điểm: không chặn được người khác phát bản miễn phí.</small></label>
+<label><input type="radio" name="q2" value="B. Tách lõi GPL, giao diện đóng"> <b>B. Tách lõi GPL ra riêng, phần còn lại đóng nguồn</b>
+<small>Bảo vệ doanh thu tốt hơn, nhưng phải xin phép tác giả gốc hoặc viết lại khoảng 1.800 dòng, và cần luật sư. Nên để sau khi A có doanh thu.</small></label>
+<label><input type="radio" name="q2" value="C. Miễn phí, nhận ủng hộ"> <b>C. Miễn phí, nhận ủng hộ</b>
+<small>Không rủi ro, gần như không có thu.</small></label>
+</fieldset>
+
+<fieldset><legend>3. Kênh bán đầu tiên</legend>
+<label><input type="radio" name="q3" value="Microsoft Store" checked> <b>Microsoft Store</b><span class="rec">GỢI Ý</span>
+<small>Đăng ký miễn phí; Microsoft lo ký số, cập nhật, thanh toán, dùng thử. Không phải viết hệ thống license. Cần kiểm tra việc nhận tiền về Việt Nam.</small></label>
+<label><input type="radio" name="q3" value="Bán trực tiếp qua web"> <b>Bán trực tiếp qua web</b>
+<small>Giữ nhiều tiền hơn mỗi đơn, nhưng cần chứng thư ký số (vài trăm USD/năm), bên thu hộ lo thuế, và tự viết cập nhật + license.</small></label>
+<label><input type="radio" name="q3" value="Cả hai ngay từ đầu"> <b>Cả hai ngay từ đầu</b>
+<small>Gấp đôi việc khi chưa biết có ai mua. Không khuyên.</small></label>
+</fieldset>
+
+<fieldset><legend>4. Kiểu giá</legend>
+<p class="q">Reflector 4 khoảng 18–20 USD mua một lần; các app có điều khiển tính 30–60 USD.</p>
+<label><input type="radio" name="q4" value="Mua một lần ~19 USD, dùng thử 7–14 ngày" checked> <b>Mua một lần khoảng 19 USD (299.000 đ), dùng thử 7–14 ngày</b><span class="rec">GỢI Ý</span>
+<small>Dễ hiểu, hợp với app không có chi phí máy chủ. Nâng giá khi phần điều khiển dễ cài.</small></label>
+<label><input type="radio" name="q4" value="Thuê bao năm"> <b>Thuê bao theo năm (khoảng 12 USD/năm)</b>
+<small>Thu đều, bù công sửa mỗi khi iOS thay đổi. Nhưng nhóm người dùng này hay né thuê bao.</small></label>
+<label><input type="radio" name="q4" value="Miễn phí + Pro"> <b>Mirror miễn phí, ghi hình và điều khiển là Pro</b>
+<small>Dễ lan rộng. Dưới GPL thì khoá Pro chỉ mang tính tự nguyện, và phải tự làm phần mở khoá.</small></label>
+</fieldset>
+
+<fieldset><legend>5. Khách hàng nhắm tới trước</legend>
+<label><input type="radio" name="q5" value="Cá nhân dùng Windows + iPhone" checked> <b>Người dùng cá nhân có PC Windows và iPhone</b><span class="rec">GỢI Ý</span>
+<small>Nhóm đông nhất. Cần: cài dễ, điều khiển bằng chuột phím.</small></label>
+<label><input type="radio" name="q5" value="Dev / QA / làm nội dung"> <b>Lập trình viên, QA, người làm nội dung</b>
+<small>Ít người hơn nhưng chịu khó cài và sẵn sàng trả tiền. Cần: ghi hình đẹp, khung máy.</small></label>
+<label><input type="radio" name="q5" value="Trường học / văn phòng"> <b>Trường học, văn phòng</b>
+<small>Mua theo số lượng, nhưng cần PIN, nhiều máy cùng lúc, hoá đơn – nhiều việc hơn.</small></label>
+</fieldset>
+
+<fieldset><legend>6. Thị trường</legend>
+<label><input type="radio" name="q6" value="Toàn cầu, tiếng Anh trước" checked> <b>Toàn cầu, tiếng Anh trước (có sẵn tiếng Việt)</b><span class="rec">GỢI Ý</span>
+<small>Store bán được ở mọi nước; người mua phần mềm trả tiền chủ yếu ở ngoài Việt Nam.</small></label>
+<label><input type="radio" name="q6" value="Việt Nam trước"> <b>Việt Nam trước</b>
+<small>Dễ hỗ trợ và lấy phản hồi, nhưng thị trường trả tiền cho phần mềm nhỏ.</small></label>
+</fieldset>
+
+<fieldset><legend>7. Thời gian bạn dành được mỗi tuần</legend>
+<label><input type="radio" name="q7" value="Dưới 5 giờ"> <b>Dưới 5 giờ</b>
+<small>Chỉ nên làm tới Giai đoạn 2 (lên Store), tính năng mới làm rất chọn lọc.</small></label>
+<label><input type="radio" name="q7" value="5–15 giờ" checked> <b>5–15 giờ</b>
+<small>Kế hoạch đang ước lượng theo mức này.</small></label>
+<label><input type="radio" name="q7" value="Toàn thời gian"> <b>Toàn thời gian</b>
+<small>Rút lộ trình còn khoảng một nửa.</small></label>
+</fieldset>
+
+<fieldset><legend>8. Việc mình làm tiếp ngay</legend>
+<label><input type="radio" name="q8" value="Đóng gói PocketPane.exe" checked> <b>Đóng gói thành PocketPane.exe</b><span class="rec">GỢI Ý</span>
+<small>Cần cho mọi hướng ở trên, làm được ngay, không phụ thuộc iPhone thật.</small></label>
+<label><input type="radio" name="q8" value="Trình hướng dẫn cài điều khiển"> <b>Trình hướng dẫn cài điều khiển trong app</b>
+<small>Là điểm khác biệt lớn nhất, nhưng cần bạn có iPhone và cáp để thử từng bước.</small></label>
+<label><input type="radio" name="q8" value="Chưa làm gì thêm"> <b>Chưa làm gì thêm</b>
+<small>Dừng ở bản kế hoạch.</small></label>
+</fieldset>
+
+<fieldset><legend>Ghi chú (tùy chọn)</legend><textarea id="note" rows="3"></textarea></fieldset>
+
+<button onclick="copyIt()">Copy kết quả</button>
+<pre id="out" hidden></pre>
+<script>
+function copyIt(){
+  const g=n=>document.querySelector(`input[name=${n}]:checked`).value;
+  const t=[1,2,3,4,5,6,7,8].map(i=>`${i}. ${g('q'+i)}`).join('\n')+(note.value?`\nGhi chú: ${note.value}`:'');
+  out.hidden=false;out.textContent=t;
+  navigator.clipboard?.writeText(t).catch(()=>{});
+}
+</script>
+</main></body></html>

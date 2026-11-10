@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PocketPane – Chọn tính năng</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--fg:#1d2330;--mute:#5b6475;--acc:#2563eb;--ok:#15803d;--bd:#dde1e8}
+@media (prefers-color-scheme:dark){:root{--bg:#14171c;--card:#1d2128;--fg:#e8ebf0;--mute:#9aa3b2;--acc:#60a5fa;--ok:#4ade80;--bd:#2d333d}}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 system-ui,sans-serif}
+main{max-width:760px;margin:auto;padding:24px 16px 80px}
+h1{font-size:22px;margin:0 0 4px}p.sub{color:var(--mute);margin:0 0 24px}
+fieldset{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin:0 0 18px}
+legend{font-weight:600;padding:0 6px}
+.q{color:var(--mute);margin:0 0 10px}
+label{display:block;border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin:8px 0;cursor:pointer}
+label:has(input:checked){border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+.rec{color:var(--ok);font-size:12px;font-weight:700;margin-left:6px}
+.eff{color:var(--mute);font-size:12px;margin-left:6px}
+label small{display:block;color:var(--mute);margin:4px 0 0 24px}
+textarea{width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--fg);font:inherit}
+button{background:var(--acc);color:#fff;border:0;border-radius:10px;padding:12px 18px;font-size:15px;cursor:pointer}
+pre{white-space:pre-wrap;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px}
+ul{margin:0;padding-left:20px;color:var(--mute)}
+</style></head><body><main>
+<h1>PocketPane – tính năng muốn có thêm</h1>
+<p class="sub">Dùng cá nhân, không bán. Tick những gì bạn muốn (chọn được nhiều), bấm “Copy kết quả” rồi dán vào chat. Nhãn <span class="rec">GỢI Ý</span> là thứ mình khuyên làm.</p>
+
+<fieldset><legend>Đã có sẵn (các app khác tính tiền)</legend>
+<ul>
+<li>Chiếu không giới hạn thời gian, không đóng dấu, có tiếng, 1080p/1440p 60 fps</li>
+<li>Quay màn hình ra MP4, chụp ảnh, toàn màn hình</li>
+<li>Điều khiển iPhone bằng chuột và bàn phím (qua cáp USB, cần cài thêm)</li>
+<li>Livestream: dùng OBS quay cửa sổ PocketPane là được, không cần làm thêm</li>
+</ul>
+</fieldset>
+
+<fieldset><legend>1. Điều khiển iPhone từ PC</legend>
+<p class="q">Tính năng đắt nhất ở các app khác (30–60 USD). PocketPane đã có nhưng bạn chưa cài. Cần iPhone, cáp, và Apple ID của bạn.</p>
+<label><input type="checkbox" value="Cài điều khiển USB cho máy tôi"> <b>Cài điều khiển USB cho máy tôi</b><span class="rec">GỢI Ý</span><span class="eff">khoảng 30 phút cùng làm</span>
+<small>Mình dẫn từng bước. Bước nhập Apple ID vào Sideloadly bạn tự làm. Với Apple ID miễn phí phải cài lại mỗi 7 ngày.</small></label>
+<label><input type="checkbox" value="Nhắc trước khi chữ ký 7 ngày hết hạn"> <b>Nhắc trước khi chữ ký 7 ngày hết hạn</b><span class="eff">nhỏ</span>
+<small>App báo trước 1 ngày, khỏi bị mất điều khiển đúng lúc cần. Chỉ có ích nếu chọn mục trên.</small></label>
+<label><input type="checkbox" value="Kéo-thả trực tiếp"> <b>Kéo-thả trực tiếp</b><span class="eff">vừa, chưa chắc mượt</span>
+<small>Hiện lệnh vuốt chỉ gửi khi thả chuột. Làm xong thì kéo icon, kéo thanh trượt được. Độ trễ vẫn khoảng 0,1–0,2 giây.</small></label>
+</fieldset>
+
+<fieldset><legend>2. Dùng hằng ngày cho dễ</legend>
+<label><input type="checkbox" value="Hộp thoại Cài đặt"> <b>Hộp thoại Cài đặt</b><span class="rec">GỢI Ý</span><span class="eff">nhỏ</span>
+<small>Đổi tên PC, chất lượng, tiếng, thư mục lưu… trong một cửa sổ, khỏi sửa file settings.json.</small></label>
+<label><input type="checkbox" value="Giao diện tiếng Việt"> <b>Giao diện tiếng Việt</b><span class="eff">nhỏ</span>
+<small>Menu chuột phải và thông báo bằng tiếng Việt.</small></label>
+<label><input type="checkbox" value="Mã PIN khi kết nối"> <b>Mã PIN khi kết nối</b><span class="eff">lớn</span>
+<small>Chặn người khác cùng Wi-Fi văn phòng chiếu lên PC của bạn. Cách rẻ hơn đã có: bỏ tick “Visible in Screen Mirroring” khi không dùng.</small></label>
+</fieldset>
+
+<fieldset><legend>3. Tính năng cao cấp khác</legend>
+<label><input type="checkbox" value="Vẽ, ghi chú lên màn hình"> <b>Vẽ, ghi chú lên màn hình</b><span class="eff">vừa</span>
+<small>Khoanh, gạch, viết chữ lên hình đang chiếu; có trong ảnh chụp và video. Hợp khi hướng dẫn hoặc thuyết trình.</small></label>
+<label><input type="checkbox" value="Nhiều iPhone cùng lúc"> <b>Nhiều iPhone / iPad cùng lúc</b><span class="eff">vừa</span>
+<small>Mỗi máy một cửa sổ. Chỉ nên chọn nếu bạn thật sự có 2 máy trở lên cần xem song song.</small></label>
+<label><input type="checkbox" value="Phát video, nhạc qua AirPlay"> <b>Phát video, nhạc qua AirPlay (không cần chiếu cả màn hình)</b><span class="eff">lớn</span>
+<small>Bấm nút AirPlay trong YouTube, Photos, Apple Music để phát lên PC. Là một giao thức khác, phải viết gần như từ đầu.</small></label>
+<label><input type="checkbox" value="H.265 / 4K"> <b>H.265 / 4K</b><span class="eff">vừa</span>
+<small>Không khuyên: trong cửa sổ cỡ điện thoại gần như không thấy khác 1440p.</small></label>
+</fieldset>
+
+<fieldset><legend>4. Những thứ đã làm cho hướng bán hàng</legend>
+<label><input type="radio" name="keep" value="Giữ build.bat, xoá kế hoạch thương mại" checked> <b>Giữ bản .exe (build.bat), xoá kế hoạch thương mại và trang chọn cũ</b><span class="rec">GỢI Ý</span>
+<small>Bản .exe vẫn tiện: chép sang máy khác là chạy, không cần Python.</small></label>
+<label><input type="radio" name="keep" value="Giữ hết"> <b>Giữ hết</b>
+<small>Phòng khi sau này đổi ý.</small></label>
+<label><input type="radio" name="keep" value="Xoá hết, quay về như trước"> <b>Xoá hết, quay về như trước hôm nay</b>
+<small>Bỏ cả build.bat và phần sửa code đi kèm. install.bat vẫn dùng như cũ.</small></label>
+</fieldset>
+
+<fieldset><legend>Tính năng khác bạn từng thấy ở app nào đó (tùy chọn)</legend><textarea id="note" rows="3" placeholder="Ví dụ: tên app + tính năng muốn có"></textarea></fieldset>
+
+<button onclick="copyIt()">Copy kết quả</button>
+<pre id="out" hidden></pre>
+<script>
+function copyIt(){
+  const picks=[...document.querySelectorAll('input[type=checkbox]:checked')].map(e=>'- '+e.value);
+  const t='Tính năng muốn làm:\n'+(picks.join('\n')||'- (không chọn gì)')+'\nPhần bán hàng: '+document.querySelector('input[name=keep]:checked').value+(note.value?`\nKhác: ${note.value}`:'');
+  out.hidden=false;out.textContent=t;
+  navigator.clipboard?.writeText(t).catch(()=>{});
+}
+</script>
+</main></body></html>

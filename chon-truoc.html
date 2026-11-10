@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PocketPane – Chọn trước</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--fg:#1d2330;--mute:#5b6475;--acc:#2563eb;--ok:#15803d;--bd:#dde1e8}
+@media (prefers-color-scheme:dark){:root{--bg:#14171c;--card:#1d2128;--fg:#e8ebf0;--mute:#9aa3b2;--acc:#60a5fa;--ok:#4ade80;--bd:#2d333d}}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 system-ui,sans-serif}
+main{max-width:760px;margin:auto;padding:24px 16px 80px}
+h1{font-size:22px;margin:0 0 4px}p.sub{color:var(--mute);margin:0 0 24px}
+fieldset{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin:0 0 18px}
+legend{font-weight:600;padding:0 6px}
+.q{color:var(--mute);margin:0 0 10px}
+label{display:block;border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin:8px 0;cursor:pointer}
+label:has(input:checked){border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+label b{display:inline}.rec{color:var(--ok);font-size:12px;font-weight:700;margin-left:6px}
+label small{display:block;color:var(--mute);margin:4px 0 0 24px}
+button{background:var(--acc);color:#fff;border:0;border-radius:10px;padding:12px 18px;font-size:15px;cursor:pointer}
+pre{white-space:pre-wrap;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px}
+</style></head><body><main>
+<h1>PocketPane – những thứ cần bạn chọn</h1>
+<p class="sub">Chọn xong bấm “Copy kết quả” rồi dán vào chat. Đáp án có nhãn <span class="rec">GỢI Ý</span> là mình khuyên dùng.</p>
+
+<fieldset><legend>1. Làm gì tiếp với repo?</legend>
+<p class="q">Repo đã ở D:\Code\pocketpane. Đây là app biến PC thành màn hình AirPlay cho iPhone.</p>
+<label><input type="radio" name="q1" value="Cài và chạy thử" checked> <b>Cài và chạy thử</b><span class="rec">GỢI Ý</span>
+<small>Chạy install.bat: tạo môi trường Python riêng trong %LOCALAPPDATA%\PocketPane, cài thư viện, tạo shortcut. Không đụng PATH hay hệ thống. Nhanh nhất để xem app chạy.</small></label>
+<label><input type="radio" name="q1" value="Chỉ đọc/giải thích code"> <b>Chỉ đọc và giải thích code</b>
+<small>Không cài gì cả. Hợp nếu bạn muốn hiểu cấu trúc trước rồi mới sửa.</small></label>
+<label><input type="radio" name="q1" value="Sửa/thêm tính năng"> <b>Sửa hoặc thêm tính năng</b>
+<small>Ghi luôn tính năng bạn muốn vào ô Ghi chú bên dưới. Mình nên cài trước để test được.</small></label>
+</fieldset>
+
+<fieldset><legend>2. Có cài điều khiển iPhone bằng chuột/bàn phím (qua USB) không?</legend>
+<p class="q">Phần này tùy chọn. Chỉ chiếu màn hình + âm thanh thì không cần.</p>
+<label><input type="radio" name="q2" value="Chưa, chỉ chiếu màn hình" checked> <b>Chưa, chỉ chiếu màn hình qua Wi-Fi</b><span class="rec">GỢI Ý</span>
+<small>Không cần cáp, không cần iTunes hay Apple ID. Chạy được ngay. Lúc nào cần thì thêm sau.</small></label>
+<label><input type="radio" name="q2" value="Có, cài USB control"> <b>Có, cài luôn</b>
+<small>Cần: cáp USB, iTunes bản tải từ apple.com, Apple ID (bản miễn phí cũng được), WebDriverAgent. Bước đăng nhập Apple ID bạn tự làm. Lâu hơn khá nhiều.</small></label>
+</fieldset>
+
+<fieldset><legend>3. Để thư mục ở đâu?</legend>
+<p class="q">Shortcut trỏ vào thư mục này. Nếu chuyển chỗ sau này thì phải chạy lại install.bat.</p>
+<label><input type="radio" name="q3" value="Giữ D:\Code\pocketpane" checked> <b>Giữ ở D:\Code\pocketpane</b><span class="rec">GỢI Ý</span>
+<small>Không phải làm gì thêm, và tiện sửa code.</small></label>
+<label><input type="radio" name="q3" value="Chuyển sang C:\Apps\pocketpane"> <b>Chuyển sang C:\Apps\pocketpane</b>
+<small>Tách “app dùng hằng ngày” khỏi thư mục code. Chỉ nên chọn nếu bạn dùng app lâu dài mà không sửa code.</small></label>
+</fieldset>
+
+<fieldset><legend>Ghi chú (tùy chọn)</legend><textarea id="note" rows="3" style="width:100%;box-sizing:border-box"></textarea></fieldset>
+
+<button onclick="copyIt()">Copy kết quả</button>
+<pre id="out" hidden></pre>
+<script>
+function copyIt(){
+  const g=n=>document.querySelector(`input[name=${n}]:checked`).value;
+  const t=`1. ${g('q1')}\n2. ${g('q2')}\n3. ${g('q3')}`+(note.value?`\nGhi chú: ${note.value}`:'');
+  out.hidden=false;out.textContent=t;
+  navigator.clipboard?.writeText(t).catch(()=>{});
+}
+</script>
+</main></body></html>

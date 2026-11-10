@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PocketPane – Chọn tiếp</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--fg:#1d2330;--mute:#5b6475;--acc:#2563eb;--ok:#15803d;--bd:#dde1e8}
+@media (prefers-color-scheme:dark){:root{--bg:#14171c;--card:#1d2128;--fg:#e8ebf0;--mute:#9aa3b2;--acc:#60a5fa;--ok:#4ade80;--bd:#2d333d}}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 system-ui,sans-serif}
+main{max-width:760px;margin:auto;padding:24px 16px 80px}
+h1{font-size:22px;margin:0 0 4px}p.sub{color:var(--mute);margin:0 0 24px}
+fieldset{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin:0 0 18px}
+legend{font-weight:600;padding:0 6px}
+.q{color:var(--mute);margin:0 0 10px}
+label{display:block;border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin:8px 0;cursor:pointer}
+label:has(input:checked){border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+.rec{color:var(--ok);font-size:12px;font-weight:700;margin-left:6px}
+label small{display:block;color:var(--mute);margin:4px 0 0 24px}
+input[type=text],textarea{width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--fg);font:inherit}
+button{background:var(--acc);color:#fff;border:0;border-radius:10px;padding:12px 18px;font-size:15px;cursor:pointer}
+pre{white-space:pre-wrap;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px}
+</style></head><body><main>
+<h1>PocketPane – các thiết lập cần bạn chọn</h1>
+<p class="sub">Áp dụng sau khi install.bat chạy xong. Chọn xong bấm “Copy kết quả” rồi dán vào chat. Lựa chọn có nhãn <span class="rec">GỢI Ý</span> là lựa chọn mình khuyên dùng.</p>
+
+<fieldset><legend>1. Tên PC hiện trên iPhone</legend>
+<p class="q">Đây là tên bạn chọn trong Phản chiếu màn hình. Mặc định là tên máy tính, thường khó nhận ra.</p>
+<label><input type="radio" name="q1" value="Giữ tên máy" checked> <b>Giữ tên máy tính</b>
+<small>Không phải làm gì. Nhưng trong văn phòng có nhiều Apple TV hoặc máy nhận AirPlay khác thì dễ chọn nhầm.</small></label>
+<label><input type="radio" name="q1" value="Đổi tên"> <b>Đổi sang tên dễ nhận</b><span class="rec">GỢI Ý</span>
+<small>Ví dụ "PC Phuong". Ghi tên bạn muốn vào ô bên dưới:</small>
+<input type="text" id="name" placeholder="Tên mới…" style="margin:6px 0 0 24px;width:calc(100% - 24px)"></label>
+</fieldset>
+
+<fieldset><legend>2. Chất lượng hình</legend>
+<p class="q">PC cắm dây LAN 100 Mbps và iPhone dùng Wi-Fi 5 (802.11ac), đường truyền như vậy là dư.</p>
+<label><input type="radio" name="q2" value="1080p 60fps (mặc định)" checked> <b>1080p, 60 fps (mặc định)</b><span class="rec">GỢI Ý</span>
+<small>Nét và mượt, ổn định nhất. Hợp với hầu hết nhu cầu.</small></label>
+<label><input type="radio" name="q2" value="1440p 60fps"> <b>1440p, 60 fps</b>
+<small>Nét hơn, nhưng tốn CPU hơn. Một số iPhone sẽ không kết nối được ở mức này, khi đó phải đổi lại 1080p.</small></label>
+<label><input type="radio" name="q2" value="720p 30fps"> <b>720p, 30 fps</b>
+<small>Nhẹ nhất. Chỉ nên chọn nếu PC yếu hoặc hình bị giật.</small></label>
+</fieldset>
+
+<fieldset><legend>3. Tiếng iPhone</legend>
+<label><input type="radio" name="q3" value="Phát ra loa PC" checked> <b>Phát ra loa PC (mặc định)</b><span class="rec">GỢI Ý</span>
+<small>Xem video hay nghe nhạc trên iPhone có tiếng ra loa PC. Lúc nào cần tắt nhanh thì bấm Ctrl + M.</small></label>
+<label><input type="radio" name="q3" value="Tắt tiếng PC"> <b>Tắt tiếng trên PC</b>
+<small>Hợp khi ngồi phòng họp hoặc chỗ đông người, khỏi bị phát tiếng bất ngờ.</small></label>
+</fieldset>
+
+<fieldset><legend>4. Cửa sổ luôn nổi trên cùng?</legend>
+<label><input type="radio" name="q4" value="Luôn nổi" checked> <b>Luôn nổi trên các cửa sổ khác (mặc định)</b><span class="rec">GỢI Ý</span>
+<small>Vừa làm việc vừa nhìn được iPhone, giống tính năng iPhone Mirroring trên Mac.</small></label>
+<label><input type="radio" name="q4" value="Như cửa sổ thường"> <b>Như cửa sổ bình thường</b>
+<small>Không che các cửa sổ khác. Hợp nếu màn hình nhỏ.</small></label>
+</fieldset>
+
+<fieldset><legend>5. Tự chạy khi bật máy?</legend>
+<label><input type="radio" name="q5" value="Không tự chạy" checked> <b>Không, chỉ mở khi cần</b><span class="rec">GỢI Ý</span>
+<small>Máy khởi động nhẹ hơn, và PC không hiện trong danh sách AirPlay của mọi iPhone trong văn phòng.</small></label>
+<label><input type="radio" name="q5" value="Tự chạy cùng Windows"> <b>Có, chạy ngầm ở khay hệ thống</b>
+<small>Tiện: lúc nào cũng sẵn sàng, iPhone vừa kết nối là cửa sổ tự hiện. Nhưng ai cùng Wi-Fi cũng thấy tên PC trong danh sách và có thể thử chiếu lên.</small></label>
+</fieldset>
+
+<fieldset><legend>6. Hai file mình tạo trong thư mục repo (HUONG-DAN.md, các file .html)</legend>
+<label><input type="radio" name="q6" value="Giữ trong repo" checked> <b>Giữ nguyên trong D:\Code\pocketpane</b><span class="rec">GỢI Ý</span>
+<small>Dễ tìm. Các file này chưa commit nên không ảnh hưởng gì tới mã nguồn.</small></label>
+<label><input type="radio" name="q6" value="Chuyển ra docs-vi"> <b>Gom vào thư mục con docs-vi</b>
+<small>Gọn hơn, tách riêng khỏi file gốc của repo.</small></label>
+<label><input type="radio" name="q6" value="Xóa file .html, giữ HUONG-DAN.md"> <b>Xóa các trang chọn .html, chỉ giữ hướng dẫn</b>
+<small>Các trang chọn chỉ dùng một lần, chọn xong là hết tác dụng.</small></label>
+</fieldset>
+
+<fieldset><legend>Ghi chú (tùy chọn)</legend><textarea id="note" rows="3"></textarea></fieldset>
+
+<button onclick="copyIt()">Copy kết quả</button>
+<pre id="out" hidden></pre>
+<script>
+function copyIt(){
+  const g=n=>document.querySelector(`input[name=${n}]:checked`).value;
+  let q1=g('q1'); if(q1==='Đổi tên') q1+=': '+(document.getElementById('name').value||'(chưa ghi)');
+  const t=`1. ${q1}\n2. ${g('q2')}\n3. ${g('q3')}\n4. ${g('q4')}\n5. ${g('q5')}\n6. ${g('q6')}`+(note.value?`\nGhi chú: ${note.value}`:'');
+  out.hidden=false;out.textContent=t;
+  navigator.clipboard?.writeText(t).catch(()=>{});
+}
+</script>
+</main></body></html>

@@ -405,6 +405,35 @@ run next to a normal copy of the app. Other options:
 | `--grab DIR` | Save a PNG of the window every 2 seconds |
 | `--quit-after N` | Exit after N seconds |
 
+### License keys
+
+The app asks for a license key at its first start and stores it in `settings.json`
+(`--local` needs none). Issue one with
+
+```bat
+.venv\Scripts\python tools\make_key.py "Name" --days 365
+```
+
+(`--days` is optional; without it the key never expires). Keys are signed with the private
+key in `%USERPROFILE%\.pocketpane\signing.key`; the app only contains the matching public key
+(`PUBLIC_KEY` in `iphone_mirror/license.py`). Back that file up and keep it out of the
+repository. A key is not tied to one PC, and since the source is open the check can be
+removed by whoever has it.
+
+### Standalone build
+
+`build.bat` packs the app with [PyInstaller](https://pyinstaller.org) into `dist\PocketPane`,
+a folder that runs on a PC without Python:
+
+- `PocketPane.exe`: the app (no console window),
+- `pocketpane-control.exe`: the control helper (same commands as `control.bat`); the app
+  also uses it to run pymobiledevice3,
+- `_internal\`: Python and the libraries.
+
+It needs Python 3.11+ on PATH and creates its own environment in `.venv`. After building it
+checks that the Qt platform plugin and every pymobiledevice3 sub-command the app uses are in
+the build. The result is not signed and has no installer yet.
+
 `tools/gen_fairplay.py` regenerates `iphone_mirror/fairplay/_tables.py` and `_garble.py` from
 the playfair C sources shipped with UxPlay:
 
@@ -428,6 +457,7 @@ python tools/gen_fairplay.py path\to\UxPlay\lib
 | `iphone_mirror/autostart.py` | Start with Windows (`HKCU\...\Run` value, kept up to date if the folder moves) |
 | `pocketpane.pyw` | Console-less launcher that works from any folder (used by Start with Windows) |
 | `iphone_mirror/control/` | WebDriverAgent client and USB bring-up |
+| `build.bat`, `pocketpane.spec`, `pocketpane_control.py` | Standalone build (PyInstaller) and its console entry |
 | `tests/` | FairPlay, WDA, recording and window tests (`python -m pytest tests`) |
 | `tools/` | Simulated iPhone, FairPlay table generator, paint and decode benchmarks |
 
