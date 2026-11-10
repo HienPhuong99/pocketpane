@@ -87,6 +87,18 @@ và app cài ra chạy được với iPhone giả.
 
 **Cách cài giờ chỉ cần double-click `install.bat`**, máy không cần có Python.
 
+## Đợt 4 – Điều khiển iPhone dễ cài hơn (10/11)
+
+| Commit | Nội dung |
+|---|---|
+| `62de11c` | Phần kiểm tra cài đặt điều khiển chuyển thành module dùng chung (`control/setup.py`). Thêm **kiểm tra hạn chữ ký WebDriverAgent**, đọc từ provisioning profile trên iPhone (Apple ID miễn phí chỉ cho 7 ngày) |
+| `a59d288` | **Cửa sổ "Set Up iPhone Control"** (chuột phải > Set Up iPhone Control..., hoặc nút *Setup Guide* trong hộp thoại lỗi). Mỗi bước có đèn xanh/cam/đỏ và tự kiểm tra lại mỗi 4 giây. Có sẵn các nút: Get Apple Devices, Show Developer Mode, Download WebDriverAgent, Open Sideloadly, Turn on control. Khi bật điều khiển mà WDA còn dưới 2 ngày là hết hạn thì app báo nhắc |
+| `079dbc2` | **Gõ tiếng Việt khi điều khiển**: bộ gõ Microsoft Vietnamese Telex (và IME Trung, Nhật) giờ gõ được lên iPhone. Unikey vốn đã chạy được, nay có thêm test |
+| `0277bbc` | Sửa 7 lỗi mà vòng review phản biện xác nhận. Đáng kể nhất: (1) `doctor` văng traceback khi đọc hạn chữ ký bị lỗi; (2) một profile wildcard không liên quan che mất việc WDA sắp hết hạn; (3) cửa sổ setup kẹt mãi ở "Working..." hoặc vẫn chạy ngầm sau khi bấm Esc; (4) chữ đang soạn trong IME bị gửi sau cú chạm, nên rơi vào sai ô. Ngoài ra còn phát hiện một test làm sập trình thông dịch một cách âm thầm, che mất các test phía sau. Giờ **100 test pass**, đã chạy 3 lần liên tiếp |
+
+Không làm: **điều khiển không cần cáp** (ghép đôi qua Wi-Fi trên iOS 17+). Phần này cần có
+iPhone thật để phát triển và thử, nên để sau khi bạn đã chạy được điều khiển bằng cáp.
+
 ## Cách chạy thử
 
 Double-click `install.bat` (nếu máy không có Python, nó tự tải bản riêng), rồi mở
@@ -98,21 +110,37 @@ cd /d D:\phuongnh\pocketpane
 
 Chạy test: `.venv\Scripts\python.exe -m pytest tests`
 
-## Cần bạn kiểm tra (với iPhone thật)
+## Việc bạn cần làm (gom về cuối, theo thứ tự)
 
-1. **Mirror qua Wi-Fi**: lần đầu, Windows Firewall sẽ hỏi; chọn Allow cho mạng Private.
-2. **Ghi màn hình**: Ctrl+R, xoay máy, Ctrl+R lần nữa; mở file trong `Videos\PocketPane`.
-   Máy dev này chậm (encode khoảng 16 ms/frame ở 590x1280); trên PC thường sẽ mượt hơn.
-3. **Các cử chỉ điều khiển mới** (cần cài USB control theo README). Toạ độ vuốt của
-   Spotlight, Notification Center, Control Center và Back được tính theo màn hình iPhone,
-   nhưng mới chỉ test với WDA giả. Nếu cử chỉ nào không ăn, chỉnh trong
-   `iphone_mirror/control/wda.py`.
+Bạn cần iPhone, cáp USB, PC và iPhone cùng mạng Wi-Fi, cùng Apple ID của bạn (bản miễn phí là đủ).
+
+**A. Xem màn hình iPhone (không cần cáp)**
+1. Double-click `install.bat`, rồi mở **PocketPane**.
+2. Windows Firewall hỏi lần đầu: tick **Private networks** rồi bấm **Allow**.
+3. Trên iPhone: Control Center > Screen Mirroring > chọn tên PC.
+4. Thử ghi màn hình: Ctrl+R, xoay máy, Ctrl+R lần nữa; mở file trong `Videos\PocketPane`.
+
+**B. Điều khiển iPhone (làm một lần)**
+1. Trong PocketPane: chuột phải > **Set Up iPhone Control...**. Từ đây làm theo đèn đỏ.
+2. Bấm **Get Apple Devices** và cài app Apple Devices từ Microsoft Store.
+3. Cắm cáp, mở khóa iPhone, bấm **Trust** rồi nhập mật mã.
+4. Bấm **Show Developer Mode**. Trên iPhone: Settings > Privacy & Security > Developer Mode >
+   bật, máy khởi động lại; mở khóa rồi bấm **Turn On**.
+5. Bấm **Download WebDriverAgent** (file `.ipa` tự hiện trong Explorer). Bấm **Open
+   Sideloadly**, cài Sideloadly, kéo file `.ipa` vào, nhập Apple ID rồi bấm Start.
+6. Trên iPhone: Settings > General > VPN & Device Management > Apple ID của bạn > **Trust**.
+7. Khi mọi bước đã xanh, bấm **Turn on control**. Lần đầu sẽ tải thêm khoảng 1 phút.
+8. Thử điều khiển: click, kéo, cuộn, gõ chữ (cả Telex), Ctrl+H (Home), Ctrl+K (Spotlight),
+   Ctrl+N (Notification Center), Ctrl+B (Back), Ctrl+V (dán).
+9. Mỗi 7 ngày (Apple ID miễn phí): cài lại `.ipa` bằng Sideloadly. App sẽ nhắc trước.
+
+Nếu có bước nào không xanh, gửi mình ảnh chụp cửa sổ setup và file log (chuột phải > Open Log).
 
 ## Để sau (lý do)
 
+- **Điều khiển không cần cáp (iOS 17+)**: cần iPhone thật để phát triển và thử.
 - **PIN/mật khẩu AirPlay**: cần pair-setup kiểu HomeKit (SRP), khá lớn.
 - **H.265/4K**: cần bật bit feature và viết parser HEVC.
 - **Kéo thả file sang iPhone**: iOS không có cách đẩy file đơn giản như `adb push`.
 - **Encoder phần cứng khi ghi hình**: hiện chỉ dùng libx264. Trên máy này `h264_mf` chạy
-  được nhưng không nhanh hơn, còn NVENC/QSV/AMF thì không mở được. Có thể thêm sau nếu CPU
-  ghi hình thực sự là vấn đề.
+  được nhưng không nhanh hơn, còn NVENC/QSV/AMF thì không mở được.
