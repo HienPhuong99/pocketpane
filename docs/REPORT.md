@@ -73,17 +73,28 @@ và tái hiện được.
 
 Số test tăng từ 66 lên **76, tất cả đều pass**. Lượt chạy end-to-end với iPhone giả không có lỗi.
 
+## Đợt 3 – Installer và CI (10/11)
+
+| Commit | Nội dung |
+|---|---|
+| `322cd5e` | **`install.bat` không cần Python có sẵn**: nó thử chạy thật từng ứng viên (`python`, `py -3`, bản riêng), nên bỏ qua bản giả của Microsoft Store. Nếu không có Python, nó tải gói Python 3.12 chính thức từ nuget.org, **kiểm tra SHA-256 đã ghim**, rồi giải nén vào `%LOCALAPPDATA%\PocketPane\python`; không cài vào hệ thống, không sửa PATH. Shortcut tạo bằng API Unicode (`tools\shortcuts.ps1`), vì WScript.Shell, `tar.exe` và `curl` của Windows đều hỏng khi đường dẫn có chữ tiếng Việt |
+| `f9e8bb8` | **CI bằng GitHub Actions**: chạy toàn bộ test trên Windows mỗi lần push. Lần chạy đầu xanh, 76 test pass |
+| `e947383` | Sửa 5 lỗi installer mà vòng review phản biện xác nhận: (1) venv mất Python gốc không bao giờ được dựng lại; (2) đường dẫn có `&` hoặc `^` làm cài đặt hỏng; (3) Python 32-bit hoặc không có pip vẫn được chấp nhận; (4) giải nén bị ngắt giữa chừng để lại Python hỏng |
+
+Đã test end-to-end trên chính máy này: không có Python trong PATH; thư mục `Phương Ứng dụng`
+và `A&B ^x (2)`; venv mất Python gốc; Python riêng bị hỏng. Cả 4 tình huống đều cài xong,
+và app cài ra chạy được với iPhone giả.
+
+**Cách cài giờ chỉ cần double-click `install.bat`**, máy không cần có Python.
+
 ## Cách chạy thử
 
-Python chưa có trong PATH, nên `install.bat` và `run.bat` chưa dùng được ngay. Có 2 cách:
-
-1. Chạy trực tiếp bằng venv có sẵn (không cần cài gì thêm):
-   ```bat
-   cd /d D:\phuongnh\pocketpane
-   .venv\Scripts\pythonw.exe -m iphone_mirror
-   ```
-2. Hoặc cài Python từ python.org (tick "Add python.exe to PATH") rồi chạy `install.bat` như
-   README hướng dẫn.
+Double-click `install.bat` (nếu máy không có Python, nó tự tải bản riêng), rồi mở
+**PocketPane** từ Desktop hoặc Start menu. Hoặc chạy bằng venv dev có sẵn:
+```bat
+cd /d D:\phuongnh\pocketpane
+.venv\Scripts\pythonw.exe -m iphone_mirror
+```
 
 Chạy test: `.venv\Scripts\python.exe -m pytest tests`
 
