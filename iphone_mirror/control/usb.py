@@ -110,6 +110,14 @@ def _python():
     return str(exe)
 
 
+def _child_cmd():
+    """Command that runs pymobiledevice3 in a child process. From source: python -m
+    pymobiledevice3. Packaged (PyInstaller): the console helper next to PocketPane.exe."""
+    if getattr(sys, "frozen", False):
+        return [str(Path(sys.executable).with_name("pocketpane-control.exe")), "pmd3"]
+    return [_python(), "-m", "pymobiledevice3"]
+
+
 def _child_env():
     env = dict(os.environ)
     env.update(PYTHONIOENCODING="utf-8", PYTHONUTF8="1", PYTHONUNBUFFERED="1", NO_COLOR="1")
@@ -178,7 +186,7 @@ def _tie_to_job(proc):
 
 def _popen(args, **kw):
     proc = subprocess.Popen(
-        [_python(), "-m", "pymobiledevice3", *args],
+        [*_child_cmd(), *args],
         stdin=subprocess.DEVNULL, creationflags=NO_WINDOW, env=_child_env(), **kw,
     )
     _tie_to_job(proc)

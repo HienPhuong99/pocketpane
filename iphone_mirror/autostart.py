@@ -26,6 +26,8 @@ def pythonw() -> str:
 
 
 def command() -> str:
+    if getattr(sys, "frozen", False):  # packaged app: PocketPane.exe itself
+        return f'"{sys.executable}" --tray'
     return f'"{pythonw()}" "{ROOT / "pocketpane.pyw"}" --tray'
 
 
