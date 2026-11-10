@@ -34,6 +34,7 @@ DEFAULTS = {
     # identity, generated on first start
     "mac": "",
     "ed25519_seed": "",
+    "license": "",  # key from tools/make_key.py, asked for at the first start
 }
 
 

@@ -8,9 +8,9 @@ from pathlib import Path
 
 from PySide6.QtCore import QTimer
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QInputDialog
 
-from . import autostart, net
+from . import autostart, license, net
 from .airplay import Receiver
 from .config import APP_DIR, APP_NAME, LOG_FILE, SETTINGS_FILE, Settings, migrate_old_settings
 from .control import OFF, Controller
@@ -54,6 +54,19 @@ def parse_args():
     return p.parse_args()
 
 
+def ensure_license(settings) -> bool:
+    """Ask for a license key until a valid one is stored. False if the user gives up."""
+    text = "Enter your license key:"
+    while not license.check(settings.get("license")):
+        key, ok = QInputDialog.getText(None, APP_NAME, text)
+        if not ok:
+            return False
+        settings["license"] = key.strip()
+        settings.save()
+        text = "That key is not valid or has expired.\nEnter your license key:"
+    return True
+
+
 def main():
     args = parse_args()
     if args.local:
@@ -83,6 +96,9 @@ def main():
         migrate_old_settings()
         autostart.refresh()
     settings = Settings(LOCAL_SETTINGS if args.local else SETTINGS_FILE)
+    # --local (loopback-only self-test) needs no key: it cannot mirror a real iPhone
+    if not args.local and not ensure_license(settings):
+        return 0
     logging.info(
         "starting, name=%r, port=%d, local=%s, pid=%d", settings["name"], net.PORT, args.local, os.getpid()
     )
