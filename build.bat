@@ -19,7 +19,7 @@ if not exist dist\PocketPane\_internal\PySide6\plugins\platforms\qwindows.dll (
     echo FAILED: Qt platform plugin missing from the build
     exit /b 1
 )
-for %%C in ("usbmux list" "usbmux forward" "amfi developer-mode-status" "amfi reveal-developer-mode" "apps list" "mounter auto-mount" "developer dvt xcuitest") do (
+for %%C in ("usbmux list" "usbmux forward" "amfi developer-mode-status" "amfi reveal-developer-mode" "apps list" "provision list" "mounter auto-mount" "developer dvt xcuitest") do (
     dist\PocketPane\pocketpane-control.exe pmd3 %%~C --help >nul || (echo FAILED: pmd3 %%~C & exit /b 1)
 )
 echo.

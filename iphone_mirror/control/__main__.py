@@ -8,14 +8,13 @@
                     debug commands against a running WebDriverAgent (X/Y in points)
 """
 import argparse
-import importlib
 import logging
 import queue
 import sys
 from pathlib import Path
 
 from . import ERROR, OFF, READY, STARTING, Controller
-from . import usb
+from . import setup, usb
 from .wda import WDA, WDAError, describe_error
 
 DEFAULT_URL = f"http://127.0.0.1:{usb.WDA_PORT}"
@@ -83,65 +82,57 @@ def _first_device():
 
 # ---------------------------------------------------------------------- doctor
 def _check_usb():
-    """The USB chain; stops at the first failure. Returns True if every check passed."""
-    try:
-        importlib.import_module("pymobiledevice3")
-        from importlib.metadata import version
-
-        ok(f"pymobiledevice3 {version('pymobiledevice3')} is installed")
-    except Exception as e:
-        fail(f"pymobiledevice3 cannot be imported ({type(e).__name__})", usb.MSG_NO_PMD3)
-        return False
-
+    """The USB chain (control/setup.py); stops at the first failure. Returns True if every check passed."""
+    r = setup.check()
     addr = usb.usbmuxd_address()
     where = f"{addr[0]}:{addr[1]}" if isinstance(addr, tuple) else addr
-    if not usb.usbmuxd_reachable():
-        fail(f"Apple's USB service (usbmuxd) is not reachable at {where}", ADVICE_USBMUXD)
-        return False
-    ok(f"Apple's USB service (usbmuxd) is running at {where}")
-
-    try:
-        devices = usb.list_devices()
-    except usb.UsbError as e:
-        fail("Could not read the iPhone over USB", str(e))
-        return False
-    if not devices:
-        fail("No iPhone found on USB", usb.MSG_NO_DEVICE)
-        return False
-    for dev in devices:
-        ok(f"iPhone on USB: {_device_line(dev)}")
-    if len(devices) > 1:
-        warn("Several iPhones are connected; control uses the first one.")
-    dev = devices[0]
-    udid = dev.get("Identifier") or dev.get("UniqueDeviceID")
-    ios = usb.parse_version(dev.get("ProductVersion"))
-
-    if ios[0] >= 16:
-        try:
-            enabled = usb.developer_mode_enabled(udid)
-        except usb.UsbError as e:
-            fail("Could not read the Developer Mode status", str(e))
+    for st in r.steps:
+        if st.key == "start" or st.state == setup.TODO:
+            continue
+        good = st.state in (setup.OK, setup.SKIP)
+        if st.key == "pmd3":
+            msg, advice = (f"{st.detail} is installed", None) if good else ("pymobiledevice3 cannot be imported", st.detail)
+        elif st.key == "usbmuxd":
+            msg = f"Apple's USB service (usbmuxd) is {'running' if good else 'not reachable'} at {where}"
+            advice = None if good else ADVICE_USBMUXD
+        elif st.key == "device":
+            if good:
+                msg, advice = f"iPhone on USB: {setup.device_line(r.device)}, UDID {r.udid or '?'}", None
+                if "several iPhones" in st.detail:
+                    ok(msg)
+                    msg, advice = "Several iPhones are connected; control uses the first one.", None
+                    warn(msg)
+                    continue
+            else:
+                msg, advice = "No usable iPhone on USB", st.detail
+        elif st.key == "dev_mode":
+            if st.state == setup.SKIP:
+                msg, advice = f"Developer Mode is {st.detail[0].lower()}{st.detail[1:]}", None
+            elif st.state == setup.WARN:
+                ok("Developer Mode is on")
+                ios = usb.parse_version(r.device.get("ProductVersion"))
+                msg, advice = f"iOS {ios[0]}.{ios[1]}: no admin-free tunnel on this version", st.detail
+            elif good:
+                msg, advice = "Developer Mode is on", None
+            elif st.detail == setup.DEV_MODE_OFF:
+                msg, advice = "Developer Mode is off", usb.MSG_DEV_MODE
+            else:
+                msg, advice = "Could not read the Developer Mode status", st.detail
+        elif st.key == "wda":
+            if good:
+                msg, advice = f"WebDriverAgent is installed ({st.detail})", None
+            elif st.detail == setup.NO_WDA:
+                msg, advice = "WebDriverAgent is not installed on the iPhone", usb.MSG_NO_WDA
+            else:
+                msg, advice = "Could not list the apps on the iPhone", st.detail
+        else:  # signature
+            msg = f"WebDriverAgent signature: {st.detail[0].lower()}{st.detail[1:]}"
+            advice = usb.MSG_EXPIRED if st.state == setup.FAIL else st.how if st.state == setup.WARN else None
+        {setup.OK: ok, setup.SKIP: ok, setup.WARN: warn, setup.FAIL: fail}[st.state](msg, advice)
+        if st.state == setup.FAIL:
             return False
-        if not enabled:
-            fail("Developer Mode is off", usb.MSG_DEV_MODE)
-            return False
-        ok("Developer Mode is on")
-    elif ios[0]:
-        ok(f"Developer Mode is not needed on iOS {ios[0]}")
-    if (17, 0) <= ios < (17, 4):
-        warn(f"iOS {ios[0]}.{ios[1]}: no admin-free tunnel on this version", usb.MSG_IOS_17_EARLY)
-
-    try:
-        bundle = usb.find_wda_bundle(udid)
-    except usb.UsbError as e:
-        fail("Could not list the apps on the iPhone", str(e))
-        return False
-    if not bundle:
-        fail("WebDriverAgent is not installed on the iPhone", usb.MSG_NO_WDA)
-        return False
-    ok(f"WebDriverAgent is installed ({bundle})")
     note("The Developer Disk Image is mounted automatically by 'start' (needs Internet the first time).")
-    return True
+    return r.ready
 
 
 def _check_wda(url):

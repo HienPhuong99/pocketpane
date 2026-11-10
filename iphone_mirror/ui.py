@@ -13,6 +13,7 @@ import logging
 import math
 import os
 import ctypes
+import threading
 import time
 from pathlib import Path
 
@@ -23,6 +24,7 @@ from PySide6.QtGui import (
     QColor,
     QFont,
     QFontMetrics,
+    QGuiApplication,
     QIcon,
     QImage,
     QLinearGradient,
@@ -164,6 +166,7 @@ def is_key(event, keys, vks=()) -> bool:
 
 
 class PhoneWindow(QWidget):
+    notice = Signal(str, str)  # (title, text) from worker threads, shown as a notification
     def __init__(self, settings, receiver_ref, controller=None):
         super().__init__()
         self.settings = settings
@@ -216,11 +219,15 @@ class PhoneWindow(QWidget):
         self._wheel_timer = QTimer(self, singleShot=True, interval=WHEEL_BATCH_MS, timeout=self._flush_wheel)
         self._type_buf = ""
         self._type_timer = QTimer(self, singleShot=True, interval=TYPE_BATCH_MS, timeout=self._flush_type)
+        self._preedit = ""  # text an input method is still composing
+        self._ime_forced = None  # composing text sent by _commit_composition: skip it if the IME commits it too
         self._effects = []  # touch feedback: dict(kind, a, b, t, life), positions as fractions
         self._anim = QTimer(self, interval=16, timeout=self._tick)
         self._shadow = None  # ((width, height, dpr), QPixmap)
         self._rec_timer = QTimer(self, interval=500, timeout=self._rec_tick)  # REC clock in the top bar
         self._saved_folder = None  # opened when the "saved" notification is clicked
+        self._setup_win = None  # SetupWindow, created on first use
+        self.notice.connect(self._show_message)
 
         screen = QApplication.primaryScreen().availableGeometry()
         ph = int(settings.get("phone_height") or 0) or int(screen.height() * 0.72)
@@ -242,7 +249,7 @@ class PhoneWindow(QWidget):
     # ------------------------------------------------------------ geometry
     def _apply_flags(self):
         flags = Qt.FramelessWindowHint | Qt.Window
-        if self.settings.get("always_on_top", True):
+        if self.settings.get("always_on_top", False):
             flags |= Qt.WindowStaysOnTopHint
         self.setWindowFlags(flags)
 
@@ -410,9 +417,13 @@ class PhoneWindow(QWidget):
             serial = self._control_serial + 1
         message = message or ""
         changed = (state, message) != (self.control_state, self.control_message)
+        became_ready = state == READY and self.control_state != READY
         new_error = state == ERROR and serial != self._error_serial  # each failure once, also a repeated one
         self.control_state, self.control_message = state, message
         self._control_serial = serial
+        # input methods (e.g. Microsoft Vietnamese Telex, Chinese/Japanese IMEs) deliver their
+        # composed text through inputMethodEvent, and only to widgets that accept it
+        self.setAttribute(Qt.WA_InputMethodEnabled, state == READY)
         if state != READY:
             self._drop_tap()
             self._cancel_gesture()
@@ -421,6 +432,8 @@ class PhoneWindow(QWidget):
         if new_error:
             self._error_serial = serial
             self._show_control_error(self.control_message or "iPhone control failed.")
+        if became_ready:
+            threading.Thread(target=self._check_expiry, name="wda-expiry", daemon=True).start()
         if changed or new_error:
             self._hint_text = ""  # the new control status replaces any older hint
             self._flash_bar()
@@ -457,8 +470,35 @@ class PhoneWindow(QWidget):
         box.setWindowModality(Qt.NonModal)
         box.setAttribute(Qt.WA_DeleteOnClose)
         box.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        guide = box.addButton("Setup Guide", QMessageBox.HelpRole)
+        guide.clicked.connect(self.open_setup)
         box.show()
         self._error_box = box
+
+    def open_setup(self):
+        """The 'Set Up iPhone Control' checklist window."""
+        from .setup_window import SetupWindow
+
+        if self._setup_win is None:
+            self._setup_win = SetupWindow(self, start_control=self._start_control)
+        self._setup_win.show()
+        self._setup_win.raise_()
+        self._setup_win.activateWindow()
+
+    def _start_control(self):
+        if self.ctrl is not None and not self.ctrl.active:
+            self.ctrl.start()
+
+    def _check_expiry(self):
+        """Background check (worker thread), started when control becomes ready."""
+        from .control import setup
+
+        text = setup.expiry_warning()
+        if text:
+            try:
+                self.notice.emit("iPhone control", text)
+            except RuntimeError:  # window deleted meanwhile
+                pass
 
     # ------------------------------------------------------------ painting
     def paintEvent(self, _):
@@ -800,7 +840,7 @@ class PhoneWindow(QWidget):
         c = btn["min"].center()
         p.drawLine(QPointF(c.x() - d, c.y()), QPointF(c.x() + d, c.y()))
         c = btn["pin"].center()
-        on = self.settings.get("always_on_top", True)
+        on = self.settings.get("always_on_top", False)
         p.setBrush(white if on else Qt.NoBrush)
         p.drawEllipse(QPointF(c.x(), c.y() - 1.6 * k), 3.6 * k, 3.6 * k)
         p.drawLine(QPointF(c.x(), c.y() + 2.0 * k), QPointF(c.x(), c.y() + 6.4 * k))
@@ -891,6 +931,7 @@ class PhoneWindow(QWidget):
             else:
                 self._hint("Turn on iPhone control first (Ctrl+U)")
             return
+        self._commit_composition()
         self._flush_tap()
         getattr(self.ctrl, method)(*args)
 
@@ -1058,6 +1099,7 @@ class PhoneWindow(QWidget):
                 return
         alt = bool(e.modifiers() & Qt.AltModifier)
         if self._gestures_on() and not alt and self.phone_rect().contains(pos):
+            self._commit_composition()
             self._gesture_begin(pos)
             return
         if not self.fullscreen:
@@ -1140,10 +1182,38 @@ class PhoneWindow(QWidget):
                     self._apply_zoom()
             return
         if dy and self._gestures_on() and self.phone_rect().contains(e.position()):
+            self._commit_composition()
             if not self._wheel_timer.isActive():
                 self._wheel_pos = to_fraction(self.phone_rect(), e.position())
                 self._wheel_timer.start()
             self._wheel_acc += dy / 120  # > 0: wheel rotated away from the user
+
+    def inputMethodEvent(self, e):
+        """Text composed by an input method: type what it commits (the preview is not sent)."""
+        text = e.commitString()
+        forced, self._ime_forced = self._ime_forced, None
+        if text and text != forced and self._control_ready():
+            self._type(text)
+        self._preedit = e.preeditString()
+        e.accept()
+
+    def _commit_composition(self):
+        """Before a tap, scroll, shortcut or paste: send the word the IME is still composing, so it
+        lands in the field it was typed for, ahead of the action."""
+        if self._preedit and self._control_ready():
+            self._type(self._preedit)
+            self._ime_forced, self._preedit = self._preedit, ""
+            QGuiApplication.inputMethod().reset()  # end the composition (Windows may commit it: skipped)
+        if self._type_buf:
+            self._flush_type()
+
+    def inputMethodQuery(self, query):
+        if query == Qt.ImEnabled:
+            return self._control_ready()
+        if query == Qt.ImCursorRectangle:  # where the IME shows its candidate window
+            r = self.phone_rect()
+            return QRectF(r.x() + r.width() * 0.1, r.bottom() - r.height() * 0.4, 1, 20).toRect()
+        return super().inputMethodQuery(query)
 
     def keyPressEvent(self, e):
         mods = e.modifiers()
@@ -1211,6 +1281,7 @@ class PhoneWindow(QWidget):
         ctl.setEnabled(self.ctrl is not None)
         ctl.triggered.connect(self._toggle_control)
         m.addAction(ctl)
+        m.addAction("Set Up iPhone Control...", self.open_setup)
         for label, method, args in (
             ("Home\tCtrl+H", "home", ()),
             ("App Switcher\tCtrl+J", "app_switcher", ()),
@@ -1227,7 +1298,7 @@ class PhoneWindow(QWidget):
         paste = m.addAction("Paste PC Clipboard\tCtrl+V", self._paste)
         paste.setEnabled(ready)
         m.addSeparator()
-        top = QAction("Always on Top", m, checkable=True, checked=self.settings.get("always_on_top", True))
+        top = QAction("Always on Top", m, checkable=True, checked=self.settings.get("always_on_top", False))
         top.triggered.connect(lambda: self._button("pin"))
         m.addAction(top)
         snd = QAction("Sound\tCtrl+M", m, checkable=True, checked=not (self.rx and self.rx.muted))
@@ -1298,7 +1369,7 @@ class PhoneWindow(QWidget):
         elif name == "home":
             self._phone("home")
         elif name == "pin":
-            on = not self.settings.get("always_on_top", True)
+            on = not self.settings.get("always_on_top", False)
             self.settings["always_on_top"] = on
             self.settings.save()
             pos = self.pos()
