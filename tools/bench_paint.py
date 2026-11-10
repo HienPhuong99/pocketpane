@@ -32,7 +32,7 @@ def main(n=300):
         t = time.perf_counter()
         for _ in range(n):
             win.on_frame(frame, 1179, 2556)
-            win.repaint()
+            app.processEvents()  # paints what the frame made dirty, like the running app
         ms = (time.perf_counter() - t) * 1000 / n
         print(f"hover={hover}: {ms:.2f} ms per frame ({w}x{h} phone)")
     win.close()

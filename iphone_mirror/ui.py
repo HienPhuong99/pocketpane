@@ -17,7 +17,7 @@ import threading
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QEvent, QObject, QPoint, QPointF, QRectF, Qt, QTimer, Signal
+from PySide6.QtCore import QEvent, QObject, QPoint, QPointF, QRect, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import (
     QAction,
     QBrush,
@@ -60,6 +60,7 @@ HINT_S = 2.6  # how long a status hint stays in the top bar
 # scrolling send many small deltas, which are summed and applied at most every ZOOM_MS.
 ZOOM_PER_NOTCH = 1.06
 ZOOM_MS = 30
+RESCALE_MS = 80  # after the last size change, the shown frame is scaled again from the original
 
 # Windows virtual-key codes: shortcuts must also work with non-Latin keyboard layouts
 VK_H, VK_I, VK_J, VK_M, VK_R, VK_S, VK_U = 0x48, 0x49, 0x4A, 0x4D, 0x52, 0x53, 0x55
@@ -90,9 +91,31 @@ def keep_awake(on: bool) -> bool:
 class Bridge(QObject):
     """Carries callbacks from worker threads to the GUI thread (queued signals)."""
 
-    frame = Signal(object, int, int)
+    frame = Signal(object, int, int)  # emitted on the GUI thread, see post_frame
     event = Signal(str, dict)
     control = Signal(str, str)  # Controller.on_state(state, message)
+    _frame_posted = Signal()
+
+    def __init__(self):
+        super().__init__()
+        self._latest = None  # newest frame the GUI thread has not taken yet
+        self._lock = threading.Lock()
+        self._frame_posted.connect(self._take_frame, Qt.QueuedConnection)
+
+    def post_frame(self, arr, src_w, src_h):
+        """Decoder thread. Only the newest frame is kept: when the GUI thread is busy it shows
+        the latest picture next, instead of working through (and holding in memory) a backlog."""
+        with self._lock:
+            waiting = self._latest is not None
+            self._latest = (arr, src_w, src_h)
+        if not waiting:
+            self._frame_posted.emit()
+
+    def _take_frame(self):
+        with self._lock:
+            item, self._latest = self._latest, None
+        if item is not None:
+            self.frame.emit(*item)
 
 
 @functools.lru_cache(maxsize=64)
@@ -223,7 +246,10 @@ class PhoneWindow(QWidget):
         self._ime_forced = None  # composing text sent by _commit_composition: skip it if the IME commits it too
         self._effects = []  # touch feedback: dict(kind, a, b, t, life), positions as fractions
         self._anim = QTimer(self, interval=16, timeout=self._tick)
-        self._shadow = None  # ((width, height, dpr), QPixmap)
+        self._chrome_cache = None  # (key, pieces): see _chrome
+        self._scaler = None  # av VideoReformatter of the GUI thread, see _rescale
+        # after a resize: scale the last frame again (the iPhone sends none while its screen is still)
+        self._rescale_timer = QTimer(self, singleShot=True, interval=RESCALE_MS, timeout=self._rescale)
         self._rec_timer = QTimer(self, interval=500, timeout=self._rec_tick)  # REC clock in the top bar
         self._saved_folder = None  # opened when the "saved" notification is clicked
         self._setup_win = None  # SetupWindow, created on first use
@@ -266,13 +292,19 @@ class PhoneWindow(QWidget):
         return w, h
 
     def phone_rect(self) -> QRectF:
+        """Where the iPhone screen is drawn. Its edges lie on whole device pixels (they would
+        not at 125% or 150% display scaling), so a frame scaled to this size is copied to the
+        screen 1:1 instead of being resampled, which is both sharper and much faster."""
         if self.fullscreen:  # as big as the screen allows, centred
             sw, sh = self.width(), self.height()
             w = min(sw, sh * self.aspect)
             h = w / self.aspect
-            return QRectF((sw - w) / 2, (sh - h) / 2, w, h)
-        w, h = self.phone_size()
-        return QRectF(SHADOW, SHADOW + BAR, w, h)
+            x, y = (sw - w) / 2, (sh - h) / 2
+        else:
+            x, y = SHADOW, SHADOW + BAR
+            w, h = self.phone_size()
+        dpr = self.devicePixelRatioF()
+        return QRectF(round(x * dpr) / dpr, round(y * dpr) / dpr, round(w * dpr) / dpr, round(h * dpr) / dpr)
 
     def corner_radius(self) -> float:
         w, h = self.phone_size()
@@ -293,12 +325,61 @@ class PhoneWindow(QWidget):
         self._update_target()
         self.update()
 
+    def _target(self) -> tuple:
+        """Size of the phone screen in device pixels: what frames are scaled to."""
+        r, dpr = self.phone_rect(), self.devicePixelRatioF()
+        return round(r.width() * dpr), round(r.height() * dpr)
+
     def _update_target(self):
         if self.rx is None:
             return
-        w, h = self.phone_size()
-        dpr = self.devicePixelRatioF()
-        self.rx.decoder.target = (round(w * dpr), round(h * dpr))
+        target = self._target()
+        if self.rx.decoder.target != target:
+            self.rx.decoder.target = target
+            self._rescale_timer.start()
+
+    def _rescale(self):
+        """Scale the last decoded frame to the window again. The iPhone sends a frame only when
+        its screen changes, so without this a still screen stays blurry after the window grew,
+        and stays empty after the window was hidden."""
+        frame = getattr(self.rx.decoder, "last_frame", None) if self.rx else None
+        if frame is None or self.state not in ("mirroring", "paused") or not self._on_screen():
+            return
+        from .video import to_bgra
+
+        if self._scaler is None:
+            from av.video.reformatter import VideoReformatter
+
+            self._scaler = VideoReformatter()  # the decoder thread has its own
+        try:
+            self._set_image(to_bgra(frame, self._target(), self._scaler))
+        except Exception:
+            log.exception("could not rescale the frame")
+        self.update()
+
+    def _on_screen(self) -> bool:
+        return self.isVisible() and not self.isMinimized()
+
+    def _update_visible(self):
+        """Tell the decoder whether anyone can see the picture (it skips scaling if not)."""
+        if self.rx is None:
+            return
+        shown = self._on_screen()
+        was = getattr(self.rx.decoder, "visible", True)
+        self.rx.decoder.visible = shown
+        if shown and not was:
+            self._rescale()  # frames that arrived meanwhile were not scaled
+
+    def showEvent(self, e):
+        self._update_visible()
+
+    def hideEvent(self, e):
+        self._update_visible()
+
+    def changeEvent(self, e):
+        if e.type() == QEvent.WindowStateChange:  # minimized or restored
+            self._update_visible()
+        super().changeEvent(e)
 
     def set_phone_height(self, h):
         if self.fullscreen:
@@ -323,7 +404,6 @@ class PhoneWindow(QWidget):
             self.showFullScreen()
             self.hover = False  # shown again when the mouse goes to the top
             self._hint("Full screen - press F11 or Esc to leave")
-        self._shadow = None
         self._update_target()
         self.update()
 
@@ -339,10 +419,18 @@ class PhoneWindow(QWidget):
         self.set_phone_height(target)
 
     # ------------------------------------------------------------ data from receiver / controller
-    def on_frame(self, arr, src_w, src_h):
+    def _set_image(self, arr):
+        """arr: BGRA ndarray (h, w, 4). video.to_bgra returns a view whose rows are padded:
+        QImage reads those in place (bytes per line = the row stride), nothing is copied."""
         h, w = arr.shape[:2]
         self._array = arr
-        self.image = QImage(arr.data, w, h, arr.strides[0], QImage.Format_RGB32)
+        rows = arr if arr.flags.c_contiguous else arr.base
+        self.image = QImage(rows.data, w, h, arr.strides[0], QImage.Format_RGB32)
+
+    def on_frame(self, arr, src_w, src_h):
+        """A decoded frame. arr is None while the window is hidden (see _update_visible)."""
+        if arr is not None:
+            self._set_image(arr)
         aspect = src_w / src_h
         if self.src_size != (src_w, src_h):
             self.src_size = (src_w, src_h)
@@ -362,7 +450,10 @@ class PhoneWindow(QWidget):
             self.kbps = (total - self._bytes0) * 8 / 1000 / (now - self._fps_t)
             self._bytes0 = total
             self._frames, self._fps_t = 0, now
-        self.update()
+            if self.hover:
+                self.update()  # the fps in the top bar
+        # only the phone screen changed: the shadow and the top bar are not painted again
+        self.update(self.phone_rect().toAlignedRect())
 
     def on_event(self, event, info):
         log.debug("ui event %s %s", event, info)
@@ -501,25 +592,29 @@ class PhoneWindow(QWidget):
                 pass
 
     # ------------------------------------------------------------ painting
-    def paintEvent(self, _):
+    def paintEvent(self, e):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
         p.setRenderHint(QPainter.SmoothPixmapTransform)
         rect = self.phone_rect()
         r = self.corner_radius()
+        showing = self.image is not None and self.state in ("mirroring", "paused", "connecting")
+        chrome = self._chrome(rect, r, showing)
 
         if self.fullscreen:
             p.fillRect(self.rect(), Qt.black)
         else:
-            p.drawPixmap(0, 0, self._shadow_pixmap(rect, r))
+            for pos, shadow, _ in chrome:
+                p.drawPixmap(pos, shadow)
 
-        if self.image is not None and self.state in ("mirroring", "paused", "connecting"):
+        if showing:
+            # a frame scaled to the window (the usual case) maps 1:1 to device pixels: see phone_rect
             brush = QBrush(self.image)
-            dpr = self.devicePixelRatioF()
             t = QTransform()
             t.translate(rect.x(), rect.y())
-            t.scale(rect.width() / (self.image.width() / dpr) / dpr, rect.height() / (self.image.height() / dpr) / dpr)
+            t.scale(rect.width() / self.image.width(), rect.height() / self.image.height())
             brush.setTransform(t)
+            p.setPen(Qt.NoPen)
             p.setBrush(brush)
             p.drawRoundedRect(rect, r, r)
             if self.state == "paused":
@@ -533,39 +628,83 @@ class PhoneWindow(QWidget):
         if self.show_stats:
             self._paint_stats(p, rect)
 
-        # bezel
-        p.setBrush(Qt.NoBrush)
-        p.setPen(QPen(QColor(255, 255, 255, 46), 1.2))
-        p.drawRoundedRect(rect.adjusted(0.6, 0.6, -0.6, -0.6), r, r)
-        p.setPen(QPen(QColor(0, 0, 0, 120), 1))
-        p.drawRoundedRect(rect.adjusted(-0.5, -0.5, 0.5, 0.5), r + 0.5, r + 0.5)
+        for pos, _, bezel in chrome:
+            p.drawPixmap(pos, bezel)
 
         if self.hover:
-            self._paint_bar(p)
+            # a new frame repaints only the phone screen; the bar above it is still on screen
+            if e.region().intersects(self._bar_rect().toAlignedRect()):
+                self._paint_bar(p)
         elif self.rx is not None and self.rx.recorder is not None:  # recording, bar hidden: red dot
             p.setPen(Qt.NoPen)
             p.setBrush(RED)
             p.drawEllipse(QPointF(rect.x() + r * 0.55, rect.y() + r * 0.55), 5, 5)
         p.end()
 
-    def _shadow_pixmap(self, rect, r) -> QPixmap:
-        """Soft drop shadow, drawn once per window size instead of every frame."""
+    def _chrome(self, rect, r, outline) -> list:
+        """Drop shadow and bezel, drawn once per window size instead of every frame.
+
+        Both show only in a frame around the phone screen (the picture covers the inside), so
+        only that frame is kept: a band along the top and the bottom, which hold the rounded
+        corners, and a strip down each side. Returns [(position, shadow, bezel)], one entry per
+        piece (shadow is None in full screen). The pieces lie on whole device pixels, so
+        drawing one is a plain copy. outline: with the black line that edges a mirrored picture."""
         dpr = self.devicePixelRatioF()
-        key = (self.width(), self.height(), dpr)
-        if self._shadow is None or self._shadow[0] != key:
-            pm = QPixmap(round(self.width() * dpr), round(self.height() * dpr))
+        key = (self.width(), self.height(), dpr, self.fullscreen, rect.x(), rect.y(), rect.width(), rect.height(), r,
+               outline)
+        if self._chrome_cache is not None and self._chrome_cache[0] == key:
+            return self._chrome_cache[1]
+
+        def dev(v):
+            return round(v * dpr)
+
+        x0, y0, x1, y1 = dev(rect.left()), dev(rect.top()), dev(rect.right()), dev(rect.bottom())
+        left, top, right, bottom = 0, 0, dev(self.width()), dev(self.height())
+        if self.fullscreen:  # no shadow: only the bezel, which hugs the phone screen
+            left, top, right, bottom = max(left, x0 - 2), max(top, y0 - 2), min(right, x1 + 2), min(bottom, y1 + 2)
+        c = math.ceil(r * dpr) + 2  # height of a rounded corner
+        edge = math.ceil(2 * dpr)  # how far the bezel reaches into the picture
+        boxes = (
+            QRect(left, top, right - left, y0 + c - top),
+            QRect(left, y1 - c, right - left, bottom - (y1 - c)),
+            QRect(left, y0 + c, x0 + edge - left, y1 - y0 - 2 * c),
+            QRect(x1 - edge, y0 + c, right - (x1 - edge), y1 - y0 - 2 * c),
+        )
+
+        def shadow(sp):
+            sp.setPen(Qt.NoPen)
+            for i in range(SHADOW, 0, -2):
+                sp.setBrush(QColor(0, 0, 0, int(34 * (1 - i / SHADOW) ** 2) + 2))
+                sp.drawRoundedRect(rect.adjusted(-i, -i + 6, i, i + 6), r + i, r + i)
+
+        def bezel(sp):
+            sp.setBrush(Qt.NoBrush)
+            if outline:
+                sp.setPen(QPen(Qt.black, 1))
+                sp.drawRoundedRect(rect, r, r)
+            sp.setPen(QPen(QColor(255, 255, 255, 46), 1.2))
+            sp.drawRoundedRect(rect.adjusted(0.6, 0.6, -0.6, -0.6), r, r)
+            sp.setPen(QPen(QColor(0, 0, 0, 120), 1))
+            sp.drawRoundedRect(rect.adjusted(-0.5, -0.5, 0.5, 0.5), r + 0.5, r + 0.5)
+
+        def piece(box, paint):
+            pm = QPixmap(box.size())
             pm.setDevicePixelRatio(dpr)
             pm.fill(Qt.transparent)
             sp = QPainter(pm)
             sp.setRenderHint(QPainter.Antialiasing)
-            sp.setPen(Qt.NoPen)
-            for i in range(SHADOW, 0, -2):
-                a = int(34 * (1 - i / SHADOW) ** 2) + 2
-                sp.setBrush(QColor(0, 0, 0, a))
-                sp.drawRoundedRect(rect.adjusted(-i, -i + 6, i, i + 6), r + i, r + i)
+            sp.translate(-box.x() / dpr, -box.y() / dpr)
+            paint(sp)
             sp.end()
-            self._shadow = (key, pm)
-        return self._shadow[1]
+            return pm
+
+        pieces = [
+            (QPointF(box.x() / dpr, box.y() / dpr), None if self.fullscreen else piece(box, shadow), piece(box, bezel))
+            for box in boxes
+            if not box.isEmpty()
+        ]
+        self._chrome_cache = (key, pieces)
+        return pieces
 
     def _paint_placeholder(self, p, rect, r):
         g = QLinearGradient(rect.topLeft(), rect.bottomRight())

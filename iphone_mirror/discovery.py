@@ -2,8 +2,6 @@
 import logging
 import socket
 
-from zeroconf import IPVersion, ServiceInfo, Zeroconf
-
 log = logging.getLogger(__name__)
 
 MODEL = "AppleTV3,2"
@@ -89,6 +87,10 @@ class Advertiser:
     def start(self):
         if self.zc is not None:
             return  # already announced
+        # imported here: zeroconf takes a while to load, and this runs on the mDNS thread,
+        # so the window does not wait for it
+        from zeroconf import IPVersion, ServiceInfo, Zeroconf
+
         self.addresses = local_ipv4_addresses()
         name = self.settings["name"]
         host = socket.gethostname().split(".")[0] + ".local."

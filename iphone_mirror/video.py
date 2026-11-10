@@ -9,6 +9,7 @@ import time
 
 import av
 import numpy as np
+from av.video.reformatter import VideoReformatter
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 from . import net
@@ -43,6 +44,23 @@ def avcc_to_annexb(data: bytes):
     return bytes(out)
 
 
+def to_bgra(frame, target, scaler):
+    """Scale a decoded frame to about `target` (w, h) pixels: BGRA ndarray shaped (h, w, 4).
+
+    The array is a view of the scaler's output, not a copy. ffmpeg pads every row, so the
+    view is usually not contiguous: its .base is the whole plane (1-D, starts at row 0) and
+    strides[0] is the padded row length. `scaler` is a VideoReformatter owned by the calling
+    thread (it caches one scaling context and must not be shared between threads)."""
+    tw, th = target or (frame.width, frame.height)
+    tw, th = max(16, int(tw)), max(16, int(th))
+    # keep the source aspect if the UI has not adapted yet
+    if abs(tw / th - frame.width / frame.height) > 0.02:
+        th = max(16, round(tw * frame.height / frame.width))
+    plane = scaler.reformat(frame, width=tw, height=th, format="bgra", interpolation="AREA").planes[0]
+    rows = np.frombuffer(plane, np.uint8)[:th * plane.line_size].reshape(th, plane.line_size)
+    return rows[:, :tw * 4].reshape(th, tw, 4)
+
+
 class VideoDecoder(threading.Thread):
     """Decodes Annex-B access units; hands the newest frame (BGRA ndarray) to on_frame."""
 
@@ -51,6 +69,10 @@ class VideoDecoder(threading.Thread):
         self.on_frame = on_frame
         self.q = queue.Queue(maxsize=240)
         self.target = None  # (w, h) in device pixels, set by the UI
+        # False while the window is hidden or minimized (set by the UI): frames are still decoded
+        # (H.264 needs every one) but not scaled, and on_frame gets None instead of pixels
+        self.visible = True
+        self._scaler = VideoReformatter()
         self.last_frame = None  # full-resolution av.VideoFrame (for screenshots)
         self.recorder = None  # record.Recorder while recording: gets every decoded frame
         # statistics for the overlay (Ctrl+I); written by the network / decoder threads
@@ -67,7 +89,8 @@ class VideoDecoder(threading.Thread):
             self.q.put_nowait(data)
         except queue.Full:
             self.dropped += 1
-            log.warning("decoder queue full, dropping frame")
+            if self.dropped % 60 == 1:  # not every frame: this is the network thread, and it is already behind
+                log.warning("decoder queue full, dropping frames (%d so far)", self.dropped)
 
     def reset(self):
         self.submit(None)
@@ -90,8 +113,9 @@ class VideoDecoder(threading.Thread):
             data = self.q.get()
             if self._stop:
                 break
-            if data is None:
+            if data is None:  # a new stream starts
                 self._codec = None
+                self.last_frame = None
                 continue
             if self._codec is None:
                 self._codec = self._new_codec()
@@ -115,13 +139,7 @@ class VideoDecoder(threading.Thread):
 
     def _deliver(self, frame):
         self.last_frame = frame
-        tw, th = self.target or (frame.width, frame.height)
-        tw, th = max(16, int(tw)), max(16, int(th))
-        # keep the source aspect if the UI has not adapted yet
-        if abs(tw / th - frame.width / frame.height) > 0.02:
-            th = max(16, round(tw * frame.height / frame.width))
-        img = frame.reformat(width=tw, height=th, format="bgra", interpolation="AREA").to_ndarray()
-        img = np.ascontiguousarray(img)  # ffmpeg rows are padded; QImage wants a packed buffer
+        img = to_bgra(frame, self.target, self._scaler) if self.visible else None
         self.on_frame(img, frame.width, frame.height)
 
 
@@ -141,7 +159,9 @@ class MirrorStream:
         self.frames = 0
 
     async def start(self) -> int:
-        self.server = await asyncio.start_server(self._handle, host=net.BIND_HOST, port=0)
+        # limit: the reader pauses the socket at twice this many buffered bytes; the default
+        # (64 KiB) is smaller than one key frame, so every large frame stopped and restarted it
+        self.server = await asyncio.start_server(self._handle, host=net.BIND_HOST, port=0, limit=1 << 20)
         self.port = self.server.sockets[0].getsockname()[1]
         log.info("mirror data port %d", self.port)
         return self.port

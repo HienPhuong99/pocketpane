@@ -159,6 +159,68 @@ class StreamInfoTest(unittest.TestCase):
         self.assertIn("next time", win._bar_label())
 
 
+class FrameDisplayTest(unittest.TestCase):
+    def test_scaled_frame_is_shown_in_place(self):
+        from av.video.reformatter import VideoReformatter
+
+        from iphone_mirror.video import to_bgra
+
+        win = make_window()
+        # 61 px wide: ffmpeg pads the rows, so the array is a strided view, not a packed copy
+        arr = to_bgra(win.rx.decoder.last_frame, (61, 130), VideoReformatter())
+        self.assertEqual(arr.shape, (130, 61, 4))
+        win.on_frame(arr, 60, 128)
+        self.assertEqual((win.image.width(), win.image.height()), (61, 130))
+        for x, y in ((0, 0), (60, 0), (0, 129), (60, 129)):  # a wrong row length would skew these
+            c = win.image.pixelColor(x, y)
+            self.assertEqual((c.red(), c.green(), c.blue()), (200, 0, 0), (x, y))
+
+    def test_only_the_newest_frame_reaches_a_busy_window(self):
+        bridge, got = ui.Bridge(), []
+        bridge.frame.connect(lambda arr, w, h: got.append(arr))
+        for i in range(3):  # three frames while the GUI thread is busy
+            bridge.post_frame(i, 60, 128)
+        app.processEvents()
+        self.assertEqual(got, [2])
+        bridge.post_frame(3, 60, 128)
+        app.processEvents()
+        self.assertEqual(got, [2, 3])
+
+    def test_hidden_window_skips_scaling_and_catches_up_when_shown(self):
+        win = make_window()
+        win.show()
+        self.assertTrue(win.rx.decoder.visible)
+        win.hide()
+        self.assertFalse(win.rx.decoder.visible)
+        win.image = None
+        win.on_frame(None, 60, 128)  # decoded while hidden: no pixels
+        self.assertEqual(win.state, "mirroring")
+        win.show()  # the last frame is scaled now
+        self.assertEqual((win.image.width(), win.image.height()), win._target())
+        win.close()
+
+    def test_resize_scales_the_still_frame_again(self):
+        win = make_window()
+        win.show()
+        win.set_phone_height(win.phone_h + 100)
+        self.assertTrue(win._rescale_timer.isActive())
+        win._rescale()
+        self.assertEqual((win.image.width(), win.image.height()), win._target())
+        win.close()
+
+    def test_shadow_and_bezel_go_all_the_way_round(self):
+        win = make_window()
+        win.on_frame(np.full((128, 60, 4), 255, dtype=np.uint8), 60, 128)  # opaque, like a real frame
+        img = win.grab().toImage()
+        r = win.phone_rect().toAlignedRect()
+        mid = r.center()
+        for x, y in ((r.left() + 3, r.bottom() + 4), (r.right() - 3, r.bottom() + 4), (mid.x(), r.bottom() + 4),
+                     (r.left() - 3, mid.y()), (r.right() + 3, mid.y()), (mid.x(), r.top() - 3)):
+            self.assertGreater(img.pixelColor(x, y).alpha(), 0, (x, y))  # shadow
+        self.assertLess(img.pixelColor(r.left() + 1, r.top() + 1).alpha(), 60)  # rounded corner: only shadow
+        self.assertEqual(img.pixelColor(mid).alpha(), 255)
+
+
 class FakeController:
     """Records the commands the window sends; always READY."""
 

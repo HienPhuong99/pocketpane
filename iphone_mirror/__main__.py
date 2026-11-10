@@ -11,7 +11,6 @@ from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QInputDialog
 
 from . import autostart, license, net
-from .airplay import Receiver
 from .config import APP_DIR, APP_NAME, LOG_FILE, SETTINGS_FILE, Settings, migrate_old_settings
 from .control import OFF, Controller
 from .ui import Bridge, PhoneWindow
@@ -106,14 +105,6 @@ def main():
     # Controller.on_state runs on the control thread: hand it to the GUI thread via a queued signal
     ctrl = Controller(on_state=lambda state, message: bridge.control.emit(state, message))
     win = PhoneWindow(settings, None, ctrl)
-    rx = Receiver(
-        settings,
-        on_frame=lambda arr, w, h: bridge.frame.emit(arr, w, h),
-        on_event=lambda e, info: bridge.event.emit(e, info),
-    )
-    win.rx = rx
-    if args.local:
-        rx.muted = True  # self-test: decode audio but keep the speakers silent
     bridge.frame.connect(win.on_frame)
     bridge.event.connect(win.on_event)
     bridge.control.connect(win.on_control)
@@ -121,7 +112,16 @@ def main():
         instance.newConnection.connect(lambda: (instance.nextPendingConnection(), win._show_front()))
     if not (args.tray and win._tray is not None):
         win.show()
+        app.processEvents()  # the window is on screen before the receiver's libraries load
+    # imported here, not at the top: PyAV, numpy and asyncio take most of the start-up time
+    from .airplay import Receiver
+
+    rx = Receiver(settings, on_frame=bridge.post_frame, on_event=lambda e, info: bridge.event.emit(e, info))
+    win.rx = rx
+    if args.local:
+        rx.muted = True  # self-test: decode audio but keep the speakers silent
     win._update_target()
+    win._update_visible()
     rx.start()
     if args.control:
         ctrl.start()

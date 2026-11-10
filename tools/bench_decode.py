@@ -5,9 +5,14 @@ Usage:  python tools/bench_decode.py [frames]
 import sys
 import time
 from fractions import Fraction
+from pathlib import Path
 
 import av
 import numpy as np
+from av.video.reformatter import VideoReformatter
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from iphone_mirror.video import to_bgra  # noqa: E402
 
 W, H = 886, 1920  # 1080p AirPlay stream of a portrait iPhone
 
@@ -37,14 +42,13 @@ def main(n=120):
     for p in packets:
         frames += dec.decode(av.Packet(p))
     print(f"decode: {(time.perf_counter() - t) * 1000 / len(frames):.2f} ms/frame ({W}x{H})")
-    for target in ((242, 524), (480, 1040), (886, 1920)):
-        for interp in ("AREA", "BILINEAR", "FAST_BILINEAR"):
-            t = time.perf_counter()
-            for f in frames:
-                np.ascontiguousarray(f.reformat(width=target[0], height=target[1], format="bgra",
-                                                interpolation=interp).to_ndarray())
-            ms = (time.perf_counter() - t) * 1000 / len(frames)
-            print(f"scale to {target[0]}x{target[1]} {interp:13s}: {ms:.2f} ms/frame")
+    scaler = VideoReformatter()
+    for target in ((242, 524), (480, 1040), (886, 1920)):  # small window, large window, full size
+        t = time.perf_counter()
+        for f in frames:
+            to_bgra(f, target, scaler)
+        ms = (time.perf_counter() - t) * 1000 / len(frames)
+        print(f"scale to {target[0]}x{target[1]}: {ms:.2f} ms/frame")
 
 
 if __name__ == "__main__":

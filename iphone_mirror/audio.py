@@ -112,7 +112,7 @@ class _Proto(asyncio.DatagramProtocol):
 
 class AudioStream:
     def __init__(self, aeskey: bytes, aesiv: bytes, ct: int, player: Player):
-        self.key, self.iv = aeskey, aesiv
+        self._cipher = Cipher(algorithms.AES(aeskey), modes.CBC(aesiv))  # every packet starts from the same IV
         self.ct = ct
         self.player = player
         self.data_port = self.control_port = 0
@@ -164,8 +164,7 @@ class AudioStream:
         self._last_seq = seq
         payload = pkt[12:]
         n = len(payload) // 16 * 16
-        dec = Cipher(algorithms.AES(self.key), modes.CBC(self.iv)).decryptor()
-        clear = dec.update(payload[:n]) + payload[n:]
+        clear = self._cipher.decryptor().update(payload[:n]) + payload[n:]
         try:
             frames = self.codec.decode(av.Packet(clear))
         except av.error.FFmpegError as e:
