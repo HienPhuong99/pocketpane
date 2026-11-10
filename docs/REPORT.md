@@ -123,7 +123,9 @@ Bạn cần iPhone, cáp USB, PC và iPhone cùng mạng Wi-Fi, cùng Apple ID c
 
 **B. Điều khiển iPhone (làm một lần)**
 1. Trong PocketPane: chuột phải > **Set Up iPhone Control...**. Từ đây làm theo đèn đỏ.
-2. Bấm **Get Apple Devices** và cài app Apple Devices từ Microsoft Store.
+2. Bấm **Get Apple Devices** và cài app Apple Devices từ Microsoft Store. Nếu Store báo Windows
+   quá cũ (cần Windows 10 22H2 trở lên), bấm **Get iTunes** để tải iTunes64Setup.exe từ apple.com
+   rồi cài. iTunes cũng cài driver USB của Apple, nên dùng được thay cho Apple Devices.
 3. Cắm cáp, mở khóa iPhone, bấm **Trust** rồi nhập mật mã.
 4. Bấm **Show Developer Mode**. Trên iPhone: Settings > Privacy & Security > Developer Mode >
    bật, máy khởi động lại; mở khóa rồi bấm **Turn On**.

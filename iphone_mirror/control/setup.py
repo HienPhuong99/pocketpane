@@ -7,6 +7,7 @@ do about a failed step; the UI maps it to a button.
 """
 import datetime
 import importlib.metadata
+import sys
 from dataclasses import dataclass, field
 
 from . import usb
@@ -15,7 +16,8 @@ OK, FAIL, WARN, TODO, SKIP = "ok", "fail", "warn", "todo", "skip"
 EXPIRY_WARN_DAYS = 2  # warn when the WDA signature expires sooner than this
 
 # actions the UI offers for a step
-A_GET_APPLE = "get_apple_devices"  # open the Store page of Apple Devices / iTunes
+A_GET_APPLE = "get_apple_devices"  # open the Store page of Apple Devices
+A_GET_ITUNES = "get_itunes"  # download iTunes from apple.com (also installs the USB driver)
 A_REVEAL_DEV_MODE = "reveal_dev_mode"  # make the Developer Mode switch appear on the phone
 A_GET_WDA = "get_wda"  # download WebDriverAgentRunner.ipa
 A_SIDELOADLY = "open_sideloadly"  # open sideloadly.io
@@ -32,8 +34,9 @@ TITLES = {
 }
 
 HOW = {
-    "usbmuxd": "Install \"Apple Devices\" from the Microsoft Store (or iTunes from apple.com), open it once "
-               "with the iPhone connected, then click Check again.",
+    "usbmuxd": "Install \"Apple Devices\" from the Microsoft Store, or iTunes from apple.com if the Store "
+               "says your Windows is too old (\"Get iTunes\"), open it once with the iPhone connected, then "
+               "click Check again.",
     "device": "Connect the iPhone with a USB cable, unlock it and tap \"Trust\" (then enter the passcode).",
     "dev_mode": "Click \"Show Developer Mode\", then on the iPhone: Settings > Privacy & Security > "
                 "Developer Mode > On. The phone restarts; unlock it and tap Turn On.",
@@ -171,6 +174,16 @@ def expiry_warning(cancel=None, now=None):
             "with Sideloadly before then (right-click > Set Up iPhone Control).")
 
 
+APPLE_DEVICES_MIN_BUILD = 19045  # Windows 10 22H2: the Store refuses Apple Devices on older builds
+
+
+def apple_actions(build=None):
+    """Apple Devices where the Store offers it, else iTunes: both install Apple's USB service."""
+    if build is None:
+        build = sys.getwindowsversion().build if sys.platform == "win32" else APPLE_DEVICES_MIN_BUILD
+    return [A_GET_APPLE, A_GET_ITUNES] if build >= APPLE_DEVICES_MIN_BUILD else [A_GET_ITUNES]
+
+
 def check(cancel=None, now=None) -> Report:
     """Run every check, stopping at the first failure (later steps stay TODO)."""
     steps = [Step(k) for k in TITLES]
@@ -190,7 +203,7 @@ def check(cancel=None, now=None) -> Report:
 
     if not usb.usbmuxd_reachable():
         s["usbmuxd"].state, s["usbmuxd"].detail = FAIL, "Apple's USB service is not running."
-        s["usbmuxd"].actions = [A_GET_APPLE]
+        s["usbmuxd"].actions = apple_actions()
         return done()
     s["usbmuxd"].state = OK
 

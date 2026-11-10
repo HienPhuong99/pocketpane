@@ -99,10 +99,14 @@ class CheckTest(unittest.TestCase):
     def test_no_apple_driver(self):
         r = self.run_check(reachable=False)
         self.assertEqual(r.step("usbmuxd").state, setup.FAIL)
-        self.assertEqual(r.step("usbmuxd").actions, [setup.A_GET_APPLE])
+        self.assertIn(setup.A_GET_ITUNES, r.step("usbmuxd").actions)
         self.assertEqual(r.step("device").state, setup.TODO)  # later steps are not checked
         self.assertFalse(r.ready)
         self.assertEqual(r.step("start").actions, [])
+
+    def test_itunes_on_windows_too_old_for_apple_devices(self):
+        self.assertEqual(setup.apple_actions(19043), [setup.A_GET_ITUNES])
+        self.assertEqual(setup.apple_actions(19045), [setup.A_GET_APPLE, setup.A_GET_ITUNES])
 
     def test_no_iphone(self):
         r = self.run_check(devices=())

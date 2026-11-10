@@ -32,6 +32,7 @@ RECHECK_MS = 4000
 APPLE_DEVICES_STORE = "ms-windows-store://pdp/?productid=9NP83LWLPZ9K"
 APPLE_DEVICES_WEB = "https://apps.microsoft.com/detail/9np83lwlpz9k"
 SIDELOADLY_URL = "https://sideloadly.io"
+ITUNES_URL = "https://www.apple.com/itunes/download/win64"  # starts the iTunes64Setup.exe download
 
 LIGHTS = {  # state -> (symbol, colour)
     setup.OK: ("✔", "#30d158"),
@@ -42,6 +43,7 @@ LIGHTS = {  # state -> (symbol, colour)
 }
 BUTTONS = {
     setup.A_GET_APPLE: "Get Apple Devices",
+    setup.A_GET_ITUNES: "Get iTunes",
     setup.A_REVEAL_DEV_MODE: "Show Developer Mode",
     setup.A_GET_WDA: "Download WebDriverAgent",
     setup.A_SIDELOADLY: "Open Sideloadly",
@@ -223,6 +225,8 @@ class SetupWindow(QDialog):
         if action == setup.A_GET_APPLE:
             if not QDesktopServices.openUrl(QUrl(APPLE_DEVICES_STORE)):
                 QDesktopServices.openUrl(QUrl(APPLE_DEVICES_WEB))
+        elif action == setup.A_GET_ITUNES:
+            QDesktopServices.openUrl(QUrl(ITUNES_URL))
         elif action == setup.A_SIDELOADLY:
             QDesktopServices.openUrl(QUrl(SIDELOADLY_URL))
         elif action == setup.A_START:
