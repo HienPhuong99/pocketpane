@@ -418,6 +418,9 @@ class PhoneWindow(QWidget):
         new_error = state == ERROR and serial != self._error_serial  # each failure once, also a repeated one
         self.control_state, self.control_message = state, message
         self._control_serial = serial
+        # input methods (e.g. Microsoft Vietnamese Telex, Chinese/Japanese IMEs) deliver their
+        # composed text through inputMethodEvent, and only to widgets that accept it
+        self.setAttribute(Qt.WA_InputMethodEnabled, state == READY)
         if state != READY:
             self._drop_tap()
             self._cancel_gesture()
@@ -1178,6 +1181,21 @@ class PhoneWindow(QWidget):
                 self._wheel_pos = to_fraction(self.phone_rect(), e.position())
                 self._wheel_timer.start()
             self._wheel_acc += dy / 120  # > 0: wheel rotated away from the user
+
+    def inputMethodEvent(self, e):
+        """Text composed by an input method: type what it commits (the preview is not sent)."""
+        text = e.commitString()
+        if text and self._control_ready():
+            self._type(text)
+        e.accept()
+
+    def inputMethodQuery(self, query):
+        if query == Qt.ImEnabled:
+            return self._control_ready()
+        if query == Qt.ImCursorRectangle:  # where the IME shows its candidate window
+            r = self.phone_rect()
+            return QRectF(r.x() + r.width() * 0.1, r.bottom() - r.height() * 0.4, 1, 20).toRect()
+        return super().inputMethodQuery(query)
 
     def keyPressEvent(self, e):
         mods = e.modifiers()

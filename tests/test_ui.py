@@ -198,6 +198,31 @@ class ControlShortcutsTest(unittest.TestCase):
         QTest.mouseDClick(win, Qt.MiddleButton, pos=pos)  # then a double-click event for the 2nd press
         self.assertEqual([c[0] for c in win.ctrl.calls], ["home", "home"])
 
+    def test_input_method_text_is_typed(self):
+        from PySide6.QtGui import QInputMethodEvent
+
+        win = self.window()
+        self.assertTrue(win.testAttribute(Qt.WA_InputMethodEnabled))
+        self.assertTrue(win.inputMethodQuery(Qt.ImEnabled))
+        preview = QInputMethodEvent("vie", [])  # still composing: nothing is sent
+        QApplication.sendEvent(win, preview)
+        commit = QInputMethodEvent()
+        commit.setCommitString("Việt Nam")
+        QApplication.sendEvent(win, commit)
+        win._flush_type()
+        self.assertEqual(win.ctrl.calls, [("type_text", "Việt Nam")])
+        win.ctrl.snapshot = lambda: (ui.OFF, "", 2)  # control off: the IME is not used for the window
+        win.on_control(ui.OFF, "")
+        self.assertFalse(win.testAttribute(Qt.WA_InputMethodEnabled))
+
+    def test_unikey_style_unicode_keys_and_backspace(self):
+        win = self.window()
+        QTest.keyClicks(win, "vie")  # Unikey: plain keys, then Backspace + the composed letter
+        QTest.keyClick(win, Qt.Key_Backspace)
+        QTest.keyClicks(win, "ệ")
+        win._flush_type()
+        self.assertEqual(win.ctrl.calls, [("type_text", "vie\bệ")])
+
     def test_paste_types_the_clipboard(self):
         win = self.window()
         QApplication.clipboard().setText("xin chào")
