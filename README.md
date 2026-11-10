@@ -30,8 +30,8 @@ WebDriverAgent, you can control it from the PC with your mouse and keyboard.
 ## Requirements
 
 - Windows 10 or Windows 11
-- [Python](https://www.python.org/downloads/) 3.11 or newer (check "Add python.exe to PATH"
-  during setup)
+- [Python](https://www.python.org/downloads/) 3.11 or newer is optional: without it,
+  `install.bat` downloads a private copy (see below)
 - The iPhone and the PC on the same Wi-Fi network
 
 For the optional USB control you also need:
@@ -44,16 +44,23 @@ For the optional USB control you also need:
 ## Install
 
 1. Download this repository (**Code > Download ZIP**, or `git clone`) and put it in a folder
-   you will keep, for example `C:\Apps\iphone-mirror`.
+   you will keep, for example `C:\Apps\pocketpane`.
 2. Double-click **`install.bat`**.
 
 `install.bat`:
 
-- checks that Python 3.11+ is available,
+- looks for Python 3.11+ (`python`, then `py -3`; the Microsoft Store "python" alias is
+  only an installer stub and is skipped). If there is none, it downloads the official
+  Python 3.12 package from nuget.org (about 15 MB), checks its SHA-256 and unpacks it into
+  `%LOCALAPPDATA%\PocketPane\python`. Nothing is installed system-wide or added to PATH,
 - creates a private virtual environment in `%LOCALAPPDATA%\PocketPane\venv`,
 - installs the dependencies from `requirements.txt` into it,
-- creates an **PocketPane** shortcut on the Desktop and in the Start menu. The shortcut
+- creates a **PocketPane** shortcut on the Desktop and in the Start menu. The shortcut
   runs `pythonw -m iphone_mirror` from the repository folder, so no console window opens.
+
+All of this works in folders whose names contain non-ASCII letters (e.g. a Windows user name
+with Vietnamese letters): the shortcuts are written through the Unicode `IShellLinkW`
+interface (`tools\shortcuts.ps1`) and the download is handled by `tools\get_python.ps1`.
 
 If you move the folder later, run `install.bat` again so the shortcuts point to the new
 location. `run.bat` starts the app without a shortcut, and `control.bat` runs the USB
