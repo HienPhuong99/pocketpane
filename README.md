@@ -117,7 +117,7 @@ window.
 | Drag | Swipe. It is sent when you release the button and lasts as long as your drag did (clamped to 0.06 - 1.5 s) |
 | Double-click | Double tap (both taps are sent together, so apps see a real double tap) |
 | Mouse wheel | Scroll. Wheel steps are collected for about 120 ms and sent as one scroll |
-| Typing | Text input. Characters are buffered for about 80 ms; Backspace and Enter work |
+| Typing | Text input. Characters are buffered for about 80 ms; Backspace and Enter work. Input methods work too (Unikey, Microsoft Vietnamese Telex, Chinese/Japanese IMEs): what they commit is typed |
 | Middle click | Home |
 | Mouse Back button | Back (swipe from the left edge) |
 | Drag the top bar, or Alt + drag anywhere | Move the window |
@@ -160,6 +160,7 @@ smooth scrolling with a touchpad resizes smoothly too.
 | Item | Action |
 |---|---|
 | Control iPhone (USB) | Turn control on or off (checkable) |
+| Set Up iPhone Control... | Checklist window that walks through the USB control setup (see below) |
 | Home, App Switcher, Back, Spotlight, Notification Center, Control Center, Lock Screen | Act on the iPhone (control on) |
 | Volume Up / Volume Down | Change the iPhone volume |
 | Paste PC Clipboard | Type the clipboard text on the iPhone |
@@ -193,6 +194,14 @@ phone. PocketPane starts it over USB with
 iOS 17.4 or later (and on iOS 16 or earlier) no administrator rights either. iOS 17.0 - 17.3
 can only be controlled with administrator rights: update the iPhone, or run
 `pymobiledevice3 remote tunneld` as administrator before you turn control on.
+
+**The easy way:** right-click the window > **Set Up iPhone Control...** (also offered as
+**Setup Guide** when starting control fails). It shows every step below with a green, orange
+or red light and what was found, re-checks by itself every few seconds while you work on the
+iPhone, and has buttons for the fixes: *Get Apple Devices*, *Show Developer Mode*, *Download
+WebDriverAgent* (shows the .ipa in Explorer), *Open Sideloadly* and finally *Turn on control*.
+It also reads when WebDriverAgent's signature expires (free Apple IDs: 7 days); when control
+starts within 2 days of that, a notification reminds you to install it again.
 
 The commands below run in a terminal (Command Prompt or PowerShell) opened in the repository
 folder. `control.bat` runs the helper with the app's own Python environment, so nothing has
@@ -252,7 +261,7 @@ command for its options):
 
 | Command | What it does |
 |---|---|
-| `doctor` | Check everything USB control needs (`--ip ADDRESS` also checks WDA over Wi-Fi) |
+| `doctor` | Check everything USB control needs, including when the WebDriverAgent signature expires (`--ip ADDRESS` also checks WDA over Wi-Fi) |
 | `reveal-dev-mode` | Make the Developer Mode switch appear in the iPhone's Settings |
 | `get-wda` | Download WebDriverAgent as `WebDriverAgentRunner.ipa` (`--out PATH` to save it elsewhere) |
 | `start` | Start WebDriverAgent over USB without the app and keep it running until Ctrl+C |
@@ -427,7 +436,8 @@ python tools/gen_fairplay.py path\to\UxPlay\lib
 | `iphone_mirror/record.py` | Screen recording to MP4 |
 | `iphone_mirror/autostart.py` | Start with Windows (`HKCU\...\Run` value, kept up to date if the folder moves) |
 | `pocketpane.pyw` | Console-less launcher that works from any folder (used by Start with Windows) |
-| `iphone_mirror/control/` | WebDriverAgent client and USB bring-up |
+| `iphone_mirror/control/` | WebDriverAgent client, USB bring-up and the setup checks (`setup.py`) |
+| `iphone_mirror/setup_window.py` | The Set Up iPhone Control checklist window |
 | `tests/` | FairPlay, WDA, recording and window tests (`python -m pytest tests`) |
 | `tools/` | Simulated iPhone, FairPlay table generator, paint and decode benchmarks |
 
