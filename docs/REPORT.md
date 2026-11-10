@@ -100,6 +100,44 @@ và app cài ra chạy được với iPhone giả.
 Không làm: **điều khiển không cần cáp** (ghép đôi qua Wi-Fi trên iOS 17+). Phần này cần có
 iPhone thật để phát triển và thử, nên để sau khi bạn đã chạy được điều khiển bằng cáp.
 
+## Đợt 5 – Tối ưu cho nhẹ và mượt (10/11)
+
+Cách làm: đo trước, sửa chỗ tốn nhất, đo lại. Mọi con số dưới đây đo trên máy này (4 nhân,
+màn hình 1366×768), lấy lần chạy tốt nhất trong nhiều lần vì máy nhiễu.
+
+| Hạng mục | Trước | Sau | Sửa gì |
+|---|---|---|---|
+| Vẽ một frame, cửa sổ nhỏ (242×524) | 1,96 ms (bar hiện: 2,64) | 1,05 ms (1,07) | Bóng đổ và viền máy vẽ sẵn một lần cho mỗi cỡ cửa sổ. Frame mới chỉ vẽ lại vùng màn hình iPhone, không vẽ lại bóng và thanh trên cùng |
+| Vẽ một frame, cửa sổ lớn (480×1040) | 6,0 ms | 3,6 ms | Như trên |
+| Scale frame cỡ đầy đủ (886×1920) | 8,2 ms | 3,7 ms | Qt đọc thẳng vùng nhớ của ffmpeg, bỏ một lần copy cả frame |
+| CPU cho mỗi frame, chạy thật với iPhone giả | 9,6–13,8 ms | 8,6–10,5 ms | Tổng của các mục trên (số này gồm cả audio và bắt tay kết nối) |
+| Từ lúc chạy đến lúc cửa sổ hiện | khoảng 1,0 s | khoảng 0,5 s | Cửa sổ hiện trước, PyAV / numpy / asyncio / zeroconf nạp sau |
+| Dung lượng bản `PocketPane.exe` | 299 MB | 245 MB | Bỏ phần Qt không dùng (OpenGL phần mềm, bản dịch, SVG, plugin ảnh) và `jedi` |
+| RAM lúc chờ | 107 MB | 104 MB | — |
+| CPU lúc chờ | 0 % | 0 % | Vốn đã tốt |
+
+Thay đổi khác:
+
+- **Màn hình đặt 125% / 150%**: trước đây ảnh bị lấy mẫu lại nên hơi nhoè. Giờ vùng màn hình
+  iPhone nằm đúng trên pixel thật, ảnh được chép 1:1 nên nét. Ở 100% ảnh giống hệt bản cũ
+  (đã so từng pixel).
+- **Phóng to cửa sổ khi màn hình iPhone đứng yên**: iPhone chỉ gửi frame khi màn hình đổi, nên
+  trước đây ảnh bị nhoè cho tới frame kế tiếp. Giờ frame cuối được scale lại sau 80 ms.
+- **Cửa sổ ẩn hoặc thu nhỏ**: vẫn decode (H.264 cần đủ mọi frame) nhưng không scale và không
+  vẽ nữa. Khi hiện lại, frame cuối được scale ngay.
+- **Giao diện bận**: chỉ giữ frame mới nhất thay vì xếp hàng mọi frame (cách scrcpy làm), nên
+  không dồn bộ nhớ và hình không bị trễ dần.
+- Việc nhỏ: bộ đệm đọc luồng video tăng lên 1 MB (mặc định 64 KB nhỏ hơn một key frame);
+  audio không tạo lại đối tượng AES cho từng gói; cảnh báo "queue full" không ghi log từng frame.
+
+Đã thử nhưng **không dùng**: decode bằng card đồ hoạ (D3D11VA). Trên máy này CPU giảm
+(7,7 → 3,8 ms/frame) nhưng mỗi frame lại chậm hơn (6,3 → 11,9 ms) vì phải chép ảnh từ card về,
+nên hình trễ hơn. Cũng đã thử vẽ ảnh bằng `drawImage` thay cho brush: chậm hơn, nên giữ brush.
+
+Test tăng từ 104 lên **109, tất cả pass**. Đã chạy end-to-end với iPhone giả bằng cả mã nguồn
+lẫn bản `PocketPane.exe` mới build; 8 lệnh pymobiledevice3 mà app dùng vẫn chạy trong bản build.
+**Chưa đo với iPhone thật.**
+
 ## Cách chạy thử
 
 Double-click `install.bat` (nếu máy không có Python, nó tự tải bản riêng), rồi mở
