@@ -211,6 +211,80 @@ class ControlShortcutsTest(unittest.TestCase):
         self.assertEqual(len(win.ctrl.calls[-1][1]), ui.PASTE_MAX)
 
 
+def wait_until(predicate, timeout=10.0):
+    import time
+
+    deadline = time.monotonic() + timeout
+    while not predicate() and time.monotonic() < deadline:
+        app.processEvents()
+        time.sleep(0.02)
+    app.processEvents()
+    return predicate()
+
+
+class SetupWindowTest(unittest.TestCase):
+    def report(self, failing=None):
+        from iphone_mirror.control import setup
+
+        steps = [setup.Step(k, setup.OK, "fine") for k in setup.TITLES]
+        r = setup.Report(steps, device={"ProductVersion": "18.1"}, udid="U1", bundle="b")
+        r.step("start").state = setup.TODO
+        if failing:
+            key, action = failing
+            r.step(key).state, r.step(key).actions = setup.FAIL, [action]
+            for later in list(setup.TITLES)[list(setup.TITLES).index(key) + 1:]:
+                r.step(later).state = setup.TODO
+        r.step("start").actions = [setup.A_START] if r.ready else []
+        return r
+
+    def open(self, report, **kw):
+        from iphone_mirror import setup_window
+
+        p = mock.patch.object(setup_window.setup, "check", return_value=report)
+        p.start()
+        self.addCleanup(p.stop)
+        w = setup_window.SetupWindow(**kw)
+        w.show()
+        self.assertTrue(wait_until(lambda: w.report is not None))
+        self.addCleanup(w.close)
+        return w
+
+    def buttons(self, w):
+        from PySide6.QtWidgets import QPushButton
+
+        return {b.text(): b for b in w.findChildren(QPushButton) if b.isVisibleTo(w)}
+
+    def test_ready_offers_turn_on_control(self):
+        started = []
+        w = self.open(self.report(), start_control=lambda: started.append(1))
+        self.assertIn("Everything is set up", w.status.text())
+        self.buttons(w)["Turn on control"].click()
+        self.assertEqual(started, [1])
+        self.assertFalse(w.isVisible())
+
+    def test_failed_step_shows_its_fix_and_runs_it_in_the_background(self):
+        from iphone_mirror import setup_window
+        from iphone_mirror.control import setup
+
+        w = self.open(self.report(("wda", setup.A_GET_WDA)))
+        self.assertIn("Next: WebDriverAgent installed", w.status.text())
+        self.assertNotIn("Turn on control", self.buttons(w))
+        with mock.patch.object(setup_window.usb, "download_wda_ipa", return_value=Path("C:/x/WDA.ipa")), \
+                mock.patch.object(setup_window, "_show_in_explorer") as explorer:
+            self.buttons(w)["Download WebDriverAgent"].click()
+            self.assertTrue(wait_until(lambda: "Saved" in w.status.text()))
+        explorer.assert_called_once()
+        self.assertIsNone(w._busy)
+
+    def test_control_ready_warns_about_expiry(self):
+        win = make_window()
+        win._tray = None
+        win.ctrl = FakeController()
+        with mock.patch("iphone_mirror.control.setup.expiry_warning", return_value="WebDriverAgent expires in about 5 hours."):
+            win.on_control(ui.READY, "ready")
+            self.assertTrue(wait_until(lambda: "expires" in win._bar_label()))
+
+
 class TrayStartTest(unittest.TestCase):
     def test_hidden_window_shows_when_an_iphone_connects(self):
         win = make_window()

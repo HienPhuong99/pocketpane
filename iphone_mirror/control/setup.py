@@ -132,6 +132,30 @@ def days_left(expires, now=None):
     return (expires - now).total_seconds() / 86400
 
 
+def expiry_warning(cancel=None, now=None):
+    """A short warning if the WDA on the connected iPhone expires within EXPIRY_WARN_DAYS
+    (checked when control starts), else None. Never raises."""
+    try:
+        if not usb.usbmuxd_reachable():
+            return None
+        devices = usb.list_devices(cancel=cancel)
+        if not devices:
+            return None
+        udid = devices[0].get("Identifier") or devices[0].get("UniqueDeviceID")
+        bundle = usb.find_wda_bundle(udid, cancel=cancel)
+        expires = wda_expiry(udid, bundle, cancel=cancel) if bundle else None
+    except usb.UsbError:
+        return None
+    if expires is None:
+        return None
+    left = days_left(expires, now)
+    if left >= EXPIRY_WARN_DAYS:
+        return None
+    hours = max(0, round(left * 24))
+    return (f"WebDriverAgent expires in about {hours} hours. Install WebDriverAgentRunner.ipa again "
+            "with Sideloadly before then (right-click > Set Up iPhone Control).")
+
+
 def check(cancel=None, now=None) -> Report:
     """Run every check, stopping at the first failure (later steps stay TODO)."""
     steps = [Step(k) for k in TITLES]

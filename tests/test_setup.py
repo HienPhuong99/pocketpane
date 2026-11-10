@@ -48,6 +48,25 @@ class ProfileTest(unittest.TestCase):
             self.assertIsNone(setup.wda_expiry("UDID1", BUNDLE))
 
 
+class ExpiryWarningTest(unittest.TestCase):
+    def warning(self, expires):
+        with mock.patch.object(usb, "usbmuxd_reachable", return_value=True), \
+                mock.patch.object(usb, "list_devices", return_value=[DEV]), \
+                mock.patch.object(usb, "find_wda_bundle", return_value=BUNDLE), \
+                mock.patch.object(setup, "wda_expiry", return_value=expires):
+            return setup.expiry_warning(now=NOW)
+
+    def test_only_when_close(self):
+        self.assertIn("about 5 hours", self.warning(NOW + datetime.timedelta(hours=5)))
+        self.assertIsNone(self.warning(NOW + datetime.timedelta(days=4)))
+        self.assertIsNone(self.warning(None))
+
+    def test_never_raises(self):
+        with mock.patch.object(usb, "usbmuxd_reachable", return_value=True), \
+                mock.patch.object(usb, "list_devices", side_effect=usb.UsbError("locked")):
+            self.assertIsNone(setup.expiry_warning())
+
+
 class CheckTest(unittest.TestCase):
     def run_check(self, reachable=True, devices=(DEV,), dev_mode=True, bundle=BUNDLE, expires=None):
         with mock.patch.object(usb, "usbmuxd_reachable", return_value=reachable), \

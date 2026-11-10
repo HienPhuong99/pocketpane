@@ -13,6 +13,7 @@ import logging
 import math
 import os
 import ctypes
+import threading
 import time
 from pathlib import Path
 
@@ -164,6 +165,7 @@ def is_key(event, keys, vks=()) -> bool:
 
 
 class PhoneWindow(QWidget):
+    notice = Signal(str, str)  # (title, text) from worker threads, shown as a notification
     def __init__(self, settings, receiver_ref, controller=None):
         super().__init__()
         self.settings = settings
@@ -221,6 +223,8 @@ class PhoneWindow(QWidget):
         self._shadow = None  # ((width, height, dpr), QPixmap)
         self._rec_timer = QTimer(self, interval=500, timeout=self._rec_tick)  # REC clock in the top bar
         self._saved_folder = None  # opened when the "saved" notification is clicked
+        self._setup_win = None  # SetupWindow, created on first use
+        self.notice.connect(self._show_message)
 
         screen = QApplication.primaryScreen().availableGeometry()
         ph = int(settings.get("phone_height") or 0) or int(screen.height() * 0.72)
@@ -410,6 +414,7 @@ class PhoneWindow(QWidget):
             serial = self._control_serial + 1
         message = message or ""
         changed = (state, message) != (self.control_state, self.control_message)
+        became_ready = state == READY and self.control_state != READY
         new_error = state == ERROR and serial != self._error_serial  # each failure once, also a repeated one
         self.control_state, self.control_message = state, message
         self._control_serial = serial
@@ -421,6 +426,8 @@ class PhoneWindow(QWidget):
         if new_error:
             self._error_serial = serial
             self._show_control_error(self.control_message or "iPhone control failed.")
+        if became_ready:
+            threading.Thread(target=self._check_expiry, name="wda-expiry", daemon=True).start()
         if changed or new_error:
             self._hint_text = ""  # the new control status replaces any older hint
             self._flash_bar()
@@ -457,8 +464,35 @@ class PhoneWindow(QWidget):
         box.setWindowModality(Qt.NonModal)
         box.setAttribute(Qt.WA_DeleteOnClose)
         box.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        guide = box.addButton("Setup Guide", QMessageBox.HelpRole)
+        guide.clicked.connect(self.open_setup)
         box.show()
         self._error_box = box
+
+    def open_setup(self):
+        """The 'Set Up iPhone Control' checklist window."""
+        from .setup_window import SetupWindow
+
+        if self._setup_win is None:
+            self._setup_win = SetupWindow(self, start_control=self._start_control)
+        self._setup_win.show()
+        self._setup_win.raise_()
+        self._setup_win.activateWindow()
+
+    def _start_control(self):
+        if self.ctrl is not None and not self.ctrl.active:
+            self.ctrl.start()
+
+    def _check_expiry(self):
+        """Background check (worker thread), started when control becomes ready."""
+        from .control import setup
+
+        text = setup.expiry_warning()
+        if text:
+            try:
+                self.notice.emit("iPhone control", text)
+            except RuntimeError:  # window deleted meanwhile
+                pass
 
     # ------------------------------------------------------------ painting
     def paintEvent(self, _):
@@ -1211,6 +1245,7 @@ class PhoneWindow(QWidget):
         ctl.setEnabled(self.ctrl is not None)
         ctl.triggered.connect(self._toggle_control)
         m.addAction(ctl)
+        m.addAction("Set Up iPhone Control...", self.open_setup)
         for label, method, args in (
             ("Home\tCtrl+H", "home", ()),
             ("App Switcher\tCtrl+J", "app_switcher", ()),
