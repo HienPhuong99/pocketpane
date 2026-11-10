@@ -95,6 +95,7 @@ và app cài ra chạy được với iPhone giả.
 | `a59d288` | **Cửa sổ "Set Up iPhone Control"** (chuột phải > Set Up iPhone Control..., hoặc nút *Setup Guide* trong hộp thoại lỗi). Mỗi bước có đèn xanh/cam/đỏ và tự kiểm tra lại mỗi 4 giây. Có sẵn các nút: Get Apple Devices, Show Developer Mode, Download WebDriverAgent, Open Sideloadly, Turn on control. Khi bật điều khiển mà WDA còn dưới 2 ngày là hết hạn thì app báo nhắc |
 | `079dbc2` | **Gõ tiếng Việt khi điều khiển**: bộ gõ Microsoft Vietnamese Telex (và IME Trung, Nhật) giờ gõ được lên iPhone. Unikey vốn đã chạy được, nay có thêm test |
 | `0277bbc` | Sửa 7 lỗi mà vòng review phản biện xác nhận. Đáng kể nhất: (1) `doctor` văng traceback khi đọc hạn chữ ký bị lỗi; (2) một profile wildcard không liên quan che mất việc WDA sắp hết hạn; (3) cửa sổ setup kẹt mãi ở "Working..." hoặc vẫn chạy ngầm sau khi bấm Esc; (4) chữ đang soạn trong IME bị gửi sau cú chạm, nên rơi vào sai ô. Ngoài ra còn phát hiện một test làm sập trình thông dịch một cách âm thầm, che mất các test phía sau. Giờ **100 test pass**, đã chạy 3 lần liên tiếp |
+| (mới) | Theo lựa chọn của bạn: cửa sổ giờ **mặc định là cửa sổ thường**, không còn luôn nổi trên cùng. Bật lại bằng nút Pin hoặc chuột phải > Always on Top. Các lựa chọn còn lại (giữ tên máy, 1080p 60fps, phát ra loa PC, không tự chạy, giữ trong repo) vốn đã là mặc định nên không đổi |
 
 Không làm: **điều khiển không cần cáp** (ghép đôi qua Wi-Fi trên iOS 17+). Phần này cần có
 iPhone thật để phát triển và thử, nên để sau khi bạn đã chạy được điều khiển bằng cáp.

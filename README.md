@@ -4,7 +4,7 @@
 > Roadmap: [docs/PLAN.md](docs/PLAN.md). What changed in this fork: [docs/REPORT.md](docs/REPORT.md).
 
 PocketPane turns a Windows PC into an AirPlay screen-mirroring receiver and shows your
-iPhone in a frameless, rounded, iPhone-shaped window that floats on top of your other apps,
+iPhone in a frameless, rounded, iPhone-shaped window that can float on top of your other apps,
 much like "iPhone Mirroring" on macOS. Picture and sound come over Wi-Fi with nothing to
 install on the phone. If you also connect the iPhone with a cable once and set up
 WebDriverAgent, you can control it from the PC with your mouse and keyboard.
@@ -13,7 +13,7 @@ WebDriverAgent, you can control it from the PC with your mouse and keyboard.
 
 - **Wireless AirPlay mirroring with sound.** The iPhone sees the PC as an AirPlay receiver
   under Control Center > Screen Mirroring. No app on the phone, no cable.
-- **iPhone-shaped window.** Frameless, rounded, always on top by default, resizable, and it
+- **iPhone-shaped window.** Frameless, rounded, optionally always on top (Pin), resizable, and it
   remembers its position.
 - **Rotation.** When the iPhone turns to landscape, the window turns with it.
 - **Screenshots.** Save the current frame as a PNG (Ctrl+S) or copy it to the clipboard
@@ -348,7 +348,7 @@ MP4 video track cannot change its size.
 | `width`, `height` | `1920`, `1080` | Stream size requested from the iPhone (the height decides the resolution) |
 | `fps` | `60` | Frame rate requested from the iPhone |
 | `audio` | `true` | Play the iPhone sound on the PC |
-| `always_on_top` | `true` | Keep the window above other windows |
+| `always_on_top` | `false` | Keep the window above other windows |
 | `opacity` | `1.0` | Window opacity (0.3 - 1) |
 | `keep_awake` | `true` | Keep the PC awake while mirroring |
 

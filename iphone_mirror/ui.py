@@ -249,7 +249,7 @@ class PhoneWindow(QWidget):
     # ------------------------------------------------------------ geometry
     def _apply_flags(self):
         flags = Qt.FramelessWindowHint | Qt.Window
-        if self.settings.get("always_on_top", True):
+        if self.settings.get("always_on_top", False):
             flags |= Qt.WindowStaysOnTopHint
         self.setWindowFlags(flags)
 
@@ -840,7 +840,7 @@ class PhoneWindow(QWidget):
         c = btn["min"].center()
         p.drawLine(QPointF(c.x() - d, c.y()), QPointF(c.x() + d, c.y()))
         c = btn["pin"].center()
-        on = self.settings.get("always_on_top", True)
+        on = self.settings.get("always_on_top", False)
         p.setBrush(white if on else Qt.NoBrush)
         p.drawEllipse(QPointF(c.x(), c.y() - 1.6 * k), 3.6 * k, 3.6 * k)
         p.drawLine(QPointF(c.x(), c.y() + 2.0 * k), QPointF(c.x(), c.y() + 6.4 * k))
@@ -1298,7 +1298,7 @@ class PhoneWindow(QWidget):
         paste = m.addAction("Paste PC Clipboard\tCtrl+V", self._paste)
         paste.setEnabled(ready)
         m.addSeparator()
-        top = QAction("Always on Top", m, checkable=True, checked=self.settings.get("always_on_top", True))
+        top = QAction("Always on Top", m, checkable=True, checked=self.settings.get("always_on_top", False))
         top.triggered.connect(lambda: self._button("pin"))
         m.addAction(top)
         snd = QAction("Sound\tCtrl+M", m, checkable=True, checked=not (self.rx and self.rx.muted))
@@ -1369,7 +1369,7 @@ class PhoneWindow(QWidget):
         elif name == "home":
             self._phone("home")
         elif name == "pin":
-            on = not self.settings.get("always_on_top", True)
+            on = not self.settings.get("always_on_top", False)
             self.settings["always_on_top"] = on
             self.settings.save()
             pos = self.pos()
