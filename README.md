@@ -1,499 +1,364 @@
 # PocketPane
 
-> Fork of [0xCodez/iphone-mirror-windows](https://github.com/0xCodez/iphone-mirror-windows) (GPL-3.0).
-> Roadmap: [docs/PLAN.md](docs/PLAN.md). What changed in this fork: [docs/REPORT.md](docs/REPORT.md).
+> Bản fork từ [0xCodez/iphone-mirror-windows](https://github.com/0xCodez/iphone-mirror-windows) (GPL-3.0).
+> Lộ trình phát triển: [docs/PLAN.md](docs/PLAN.md). Báo cáo các thay đổi trong bản fork: [docs/REPORT.md](docs/REPORT.md).
 
-PocketPane turns a Windows PC into an AirPlay screen-mirroring receiver and shows your
-iPhone in a frameless, rounded, iPhone-shaped window that can float on top of your other apps,
-much like "iPhone Mirroring" on macOS. Picture and sound come over Wi-Fi with nothing to
-install on the phone. If you also connect the iPhone with a cable once and set up
-WebDriverAgent, you can control it from the PC with your mouse and keyboard.
+PocketPane biến máy tính Windows thành thiết bị nhận phản chiếu màn hình AirPlay và hiển thị iPhone của bạn trong một cửa sổ không viền, bo góc theo hình dáng iPhone, có thể nổi trên các ứng dụng khác tương tự tính năng "iPhone Mirroring" trên macOS. Hình ảnh và âm thanh được truyền không dây qua Wi-Fi mà không cần cài đặt thêm ứng dụng nào trên điện thoại. Nếu bạn kết nối iPhone qua cáp USB một lần để thiết lập WebDriverAgent, bạn còn có thể điều khiển điện thoại trực tiếp từ PC bằng chuột và bàn phím.
 
-## Features
+## Tính năng
 
-- **Wireless AirPlay mirroring with sound.** The iPhone sees the PC as an AirPlay receiver
-  under Control Center > Screen Mirroring. No app on the phone, no cable.
-- **iPhone-shaped window.** Frameless, rounded, optionally always on top (Pin), resizable, and it
-  remembers its position.
-- **Rotation.** When the iPhone turns to landscape, the window turns with it.
-- **Screenshots.** Save the current frame as a PNG (Ctrl+S) or copy it to the clipboard
-  (Ctrl+Shift+S).
-- **Screen recording.** Record the iPhone screen and sound to an MP4 file (Ctrl+R).
-- **Full screen** (F11), **window opacity**, **stream quality** (720p / 1080p / 1440p,
-  30 / 60 fps) and a **stream info overlay** (Ctrl+I: resolution, fps, bitrate).
-- **Background friendly.** Start with Windows in the tray (the window appears when an iPhone
-  connects), keep the PC awake while mirroring, hide the PC from Screen Mirroring.
-- **Optional mouse and keyboard control over USB.** Tap, long press, swipe, scroll, type,
-  Home, App Switcher and volume, all through
-  [WebDriverAgent](https://github.com/appium/WebDriverAgent).
+- **Phản chiếu AirPlay không dây kèm âm thanh.** iPhone nhận diện PC như một thiết bị nhận AirPlay trong *Control Center > Screen Mirroring* (Trung tâm điều khiển > Phản chiếu màn hình). Không cần cài app trên điện thoại, không cần cáp.
+- **Cửa sổ mang hình dáng iPhone.** Không viền, bo góc, tùy chọn luôn nổi trên cùng (Ghim / Pin), thay đổi kích thước linh hoạt và tự ghi nhớ vị trí cũ.
+- **Tự động xoay màn hình.** Khi xoay ngang iPhone, cửa sổ trên PC cũng tự động xoay theo.
+- **Chụp ảnh màn hình.** Lưu khung hình hiện tại thành file PNG (`Ctrl+S`) hoặc chép thẳng vào clipboard (`Ctrl+Shift+S`).
+- **Quay màn hình.** Ghi lại cả hình ảnh lẫn âm thanh của iPhone ra file MP4 (`Ctrl+R`).
+- **Toàn màn hình** (`F11`), **độ trong suốt cửa sổ**, **tùy chỉnh chất lượng luồng phát** (720p / 1080p / 1440p, 30 / 60 fps) và **bảng thông số trực tiếp** (`Ctrl+I`: độ phân giải, fps, bitrate).
+- **Chạy nền gọn nhẹ.** Khởi động cùng Windows dưới khay hệ thống (cửa sổ tự hiện khi có iPhone kết nối), giữ PC không ngủ trong lúc phản chiếu, hoặc tạm ẩn PC khỏi danh sách Screen Mirroring.
+- **Điều khiển bằng chuột và bàn phím qua USB (tùy chọn).** Chạm, nhấn giữ, vuốt, cuộn, gõ chữ (hỗ trợ tiếng Việt), nút Home, trình đa nhiệm (App Switcher) và tăng giảm âm lượng thông qua [WebDriverAgent](https://github.com/appium/WebDriverAgent).
 
-## Requirements
+## Yêu cầu hệ thống
 
-- Windows 10 or Windows 11
-- [Python](https://www.python.org/downloads/) 3.11 or newer is optional: without it,
-  `install.bat` downloads a private copy (see below)
-- The iPhone and the PC on the same Wi-Fi network
+- Windows 10 hoặc Windows 11
+- [Python](https://www.python.org/downloads/) 3.11 trở lên (không bắt buộc: nếu máy chưa có, `install.bat` sẽ tự tải một bản riêng như mô tả bên dưới)
+- iPhone và PC kết nối chung một mạng Wi-Fi
 
-For the optional USB control you also need:
+Nếu muốn dùng thêm tính năng điều khiển qua USB, bạn cần:
 
-- a USB cable for the iPhone
-- **iTunes from [apple.com](https://www.apple.com/itunes/)** (it installs Apple's USB driver
-  service; Sideloadly needs the apple.com version rather than the Microsoft Store apps)
-- an Apple ID; a free one is enough
+- Cáp USB kết nối iPhone với PC
+- **Apple Devices** từ Microsoft Store hoặc **iTunes tải từ [apple.com](https://www.apple.com/itunes/)** (để cài dịch vụ driver USB của Apple; lưu ý Sideloadly yêu cầu bản iTunes từ `apple.com` thay vì bản Microsoft Store, và bản `apple.com` cũng dùng được cho các bản Windows cũ không cài được Apple Devices)
+- Một tài khoản Apple ID (tài khoản miễn phí là đủ)
 
-## Install
+## Cài đặt
 
-1. Download this repository (**Code > Download ZIP**, or `git clone`) and put it in a folder
-   you will keep, for example `C:\Apps\pocketpane`.
-2. Double-click **`install.bat`**.
+1. Tải mã nguồn về máy (**Code > Download ZIP**, hoặc `git clone`) và đặt vào một thư mục cố định, ví dụ `C:\Apps\pocketpane`.
+2. Nhấp đúp vào **`install.bat`**.
 
-`install.bat`:
+`install.bat` sẽ tự động thực hiện:
 
-- looks for Python 3.11+ (`python`, then `py -3`; the Microsoft Store "python" alias is
-  only an installer stub and is skipped). If there is none, it downloads the official
-  Python 3.12 package from nuget.org (about 15 MB), checks its SHA-256 and unpacks it into
-  `%LOCALAPPDATA%\PocketPane\python`. Nothing is installed system-wide or added to PATH,
-- creates a private virtual environment in `%LOCALAPPDATA%\PocketPane\venv`,
-- installs the dependencies from `requirements.txt` into it,
-- creates a **PocketPane** shortcut on the Desktop and in the Start menu. The shortcut
-  runs `pythonw -m iphone_mirror` from the repository folder, so no console window opens.
+- Tìm Python 3.11+ có sẵn (`python`, sau đó `py -3`; alias "python" giả của Microsoft Store sẽ tự động bị bỏ qua). Nếu máy chưa có, script sẽ tải gói Python 3.12 chính thức từ `nuget.org` (khoảng 15 MB), kiểm tra mã băm SHA-256 và giải nén vào `%LOCALAPPDATA%\PocketPane\python` mà không can thiệp vào hệ thống hay biến môi trường `PATH`.
+- Tạo môi trường ảo (virtual environment) riêng tại `%LOCALAPPDATA%\PocketPane\venv`.
+- Cài đặt các thư viện cần thiết từ `requirements.txt` vào môi trường ảo đó.
+- Tạo shortcut **PocketPane** ngoài Desktop và trong Start Menu. Shortcut này chạy `pythonw -m iphone_mirror` từ thư mục mã nguồn nên sẽ không mở kèm cửa sổ dòng lệnh (console).
 
-All of this works in folders whose names contain non-ASCII letters (e.g. a Windows user name
-with Vietnamese letters): the shortcuts are written through the Unicode `IShellLinkW`
-interface (`tools\shortcuts.ps1`) and the download is handled by `tools\get_python.ps1`.
+Toàn bộ quá trình cài đặt đều hỗ trợ đường dẫn có dấu tiếng Việt (ví dụ tên người dùng Windows có dấu): shortcut được tạo qua giao diện Unicode `IShellLinkW` (`tools\shortcuts.ps1`) và việc tải Python được xử lý bởi `tools\get_python.ps1`.
 
-If you move the folder later, run `install.bat` again so the shortcuts point to the new
-location. `run.bat` starts the app without a shortcut, and `control.bat` runs the USB
-control helper (see below).
+Nếu sau này bạn di chuyển thư mục sang nơi khác, chỉ cần chạy lại `install.bat` để cập nhật lại đường dẫn shortcut. Ngoài ra, bạn có thể chạy `run.bat` để mở ứng dụng trực tiếp không qua shortcut, và dùng `control.bat` cho công cụ hỗ trợ điều khiển USB (xem bên dưới).
 
-## Usage
+## Cách sử dụng
 
-1. Start **PocketPane**. An iPhone-shaped window appears with the text
-   **"Waiting for iPhone"**. The footer shows the PC's addresses:
-   `PC: <ips>  -  iPhone and PC must be on the same Wi-Fi`.
-2. **First start only:** Windows Defender Firewall asks whether Python may use the network.
-   Tick **Private networks** and click **Allow**.
-3. Make sure Windows treats your Wi-Fi as a **private** network:
-   Settings > Network & internet > Wi-Fi > *your network* > Network profile type > **Private**.
-4. On the iPhone, open **Control Center > Screen Mirroring** and choose the name of this PC
-   (by default the computer name; you can change it with right-click > **Rename PC...**).
-5. The window shows **"Connecting..."** and then the iPhone screen.
+1. Mở **PocketPane**. Một cửa sổ hình chiếc iPhone sẽ hiện ra với dòng chữ **"Waiting for iPhone"**. Dưới chân cửa sổ hiển thị địa chỉ IP của máy tính: `PC: <ips>  -  iPhone and PC must be on the same Wi-Fi`.
+2. **Chỉ trong lần chạy đầu tiên:** Tường lửa Windows Defender sẽ hỏi quyền truy cập mạng cho Python. Hãy tích chọn **Private networks** rồi bấm **Allow**.
+3. Đảm bảo mạng Wi-Fi trên Windows đang đặt ở chế độ **Private** (Mạng riêng): vào *Settings > Network & internet > Wi-Fi > tên mạng Wi-Fi > Network profile type > **Private***.
+4. Trên iPhone, mở **Control Center > Screen Mirroring** (Trung tâm điều khiển > Phản chiếu màn hình) và chọn tên máy tính này (mặc định là tên máy; bạn có thể đổi bằng cách nhấp chuột phải > **Rename PC...**).
+5. Cửa sổ sẽ hiện **"Connecting..."**, sau đó hiển thị màn hình iPhone.
 
-Only one copy of the app runs at a time: starting it again just brings the existing window
-to the front.
+Tại mỗi thời điểm chỉ có một phiên bản ứng dụng chạy: nếu bạn mở ứng dụng lần nữa, cửa sổ đang chạy sẽ được đưa lên phía trước.
 
-## Window controls
+## Thao tác trên cửa sổ
 
-Move the mouse over the window to show the **top bar**. From left to right it has:
+Di chuột vào cửa sổ để hiện **thanh công cụ phía trên**. Từ trái sang phải bao gồm:
 
-- a label with the device name, the frame rate and the control status,
-- **Control** (hand pointer icon): turns USB control on or off. White when off, pulsing
-  orange while starting, green when ready, red after an error,
-- **Home** (circle),
-- **Pin**: keep the window always on top,
-- **Minimize**,
-- **Close**.
+- Nhãn hiển thị tên thiết bị, tốc độ khung hình (FPS) và trạng thái điều khiển,
+- **Control** (biểu tượng bàn tay): bật hoặc tắt điều khiển USB. Màu trắng khi tắt, nhấp nháy cam khi đang khởi động, màu xanh lá khi sẵn sàng, và màu đỏ nếu gặp lỗi,
+- **Home** (hình tròn),
+- **Pin**: ghim cửa sổ luôn nổi trên cùng,
+- **Minimize**: thu nhỏ cửa sổ,
+- **Close**: đóng ứng dụng.
 
-### Mirroring only (control off, the default)
+### Chỉ phản chiếu màn hình (tắt điều khiển – mặc định)
 
-| Action | What it does |
+| Thao tác | Tác dụng |
 |---|---|
-| Left-drag anywhere | Move the window |
-| Double-click | Switch between big and normal size (leaves full screen) |
-| Ctrl + mouse wheel | Resize |
-| Ctrl + Plus / Ctrl + Minus | Resize |
-| Right-click | Open the menu |
+| Kéo chuột trái ở bất kỳ đâu | Di chuyển cửa sổ |
+| Nhấp đúp chuột (Double-click) | Chuyển đổi giữa kích thước lớn và bình thường (thoát toàn màn hình nếu đang bật) |
+| `Ctrl` + con lăn chuột | Thay đổi kích thước cửa sổ |
+| `Ctrl + Plus` / `Ctrl + Minus` | Thay đổi kích thước cửa sổ |
+| Nhấp chuột phải | Mở menu tùy chọn |
 
-### With control on
+### Khi bật điều khiển
 
-These apply once control is **ready** (green Control button) and the iPhone screen is shown.
-While the window shows a placeholder instead of the iPhone screen, dragging still moves the
-window.
+Các thao tác dưới đây có hiệu lực khi điều khiển đã **sẵn sàng** (nút Control màu xanh lá) và màn hình iPhone đang hiển thị. Khi cửa sổ đang ở màn hình chờ, kéo chuột vẫn dùng để di chuyển cửa sổ.
 
-| Action on the phone area | What the iPhone gets |
+| Thao tác trên vùng màn hình điện thoại | Phản hồi trên iPhone |
 |---|---|
-| Click | Tap. It is sent about 0.2 s after the click, in case a second click makes it a double tap |
-| Press and hold for 0.5 s or longer without moving | Long press |
-| Drag | Swipe. It is sent when you release the button and lasts as long as your drag did (clamped to 0.06 - 1.5 s) |
-| Double-click | Double tap (both taps are sent together, so apps see a real double tap) |
-| Mouse wheel | Scroll. Wheel steps are collected for about 120 ms and sent as one scroll |
-| Typing | Text input. Characters are buffered for about 80 ms; Backspace and Enter work. Input methods work too (Unikey, Microsoft Vietnamese Telex, Chinese/Japanese IMEs): what they commit is typed |
-| Middle click | Home |
-| Mouse Back button | Back (swipe from the left edge) |
-| Drag the top bar, or Alt + drag anywhere | Move the window |
-| Ctrl + mouse wheel | Resize |
+| Nhấp chuột (Click) | Chạm (Tap). Lệnh được gửi sau khoảng 0,2 giây để phân biệt với thao tác nhấp đúp |
+| Nhấn giữ từ 0,5 giây trở lên mà không di chuột | Nhấn giữ (Long press) |
+| Kéo chuột (Drag) | Vuốt (Swipe). Lệnh được gửi khi nhả chuột với thời lượng tương ứng thời gian kéo (giới hạn từ 0,06 – 1,5 giây) |
+| Nhấp đúp chuột (Double-click) | Chạm đúp (Double tap – hai lần chạm được gửi cùng lúc để ứng dụng nhận diện đúng cử chỉ) |
+| Con lăn chuột | Cuộn trang (Scroll). Các nấc lăn trong khoảng 120 ms được gộp thành một lần cuộn mượt |
+| Gõ bàn phím | Nhập văn bản. Ký tự được đệm trong khoảng 80 ms; hỗ trợ `Backspace` và `Enter`. Tương thích tốt với các bộ gõ tiếng Việt (Unikey, Microsoft Vietnamese Telex) cũng như bộ gõ Trung/Nhật (IME) |
+| Nhấp chuột giữa | Nút Home |
+| Nút Back bên hông chuột | Quay lại (vuốt từ mép trái màn hình) |
+| Kéo thanh công cụ trên cùng, hoặc `Alt` + kéo ở bất kỳ đâu | Di chuyển cửa sổ |
+| `Ctrl` + con lăn chuột | Thay đổi kích thước cửa sổ |
 
-Every tap or long press shows a short fading ripple where it landed; a swipe shows a fading
-line from its start to its end.
+Mỗi cú chạm hoặc nhấn giữ sẽ hiển thị hiệu ứng vòng tròn lan tỏa mờ dần tại điểm chạm; thao tác vuốt sẽ hiển thị đường kẻ mờ dần từ điểm đầu tới điểm cuối.
 
-### Keyboard shortcuts (both modes)
+### Phím tắt (dùng cho cả hai chế độ)
 
-| Shortcut | Action |
+| Phím tắt | Tác dụng |
 |---|---|
-| Ctrl + H | Home |
-| Ctrl + J | App Switcher |
-| Ctrl + B | Back (swipe from the left edge) |
-| Ctrl + K | Spotlight search |
-| Ctrl + N | Notification Center |
-| Ctrl + Shift + N | Control Center |
-| Ctrl + L | Lock the iPhone |
-| Ctrl + V | Type the PC clipboard text into the focused field (up to 2000 characters) |
-| Ctrl + Up / Ctrl + Down | iPhone volume up / down |
-| Ctrl + M | Mute / unmute the sound on the PC |
-| Ctrl + U | Turn USB control on / off |
-| Ctrl + S | Save a screenshot (full iPhone resolution) |
-| Ctrl + Shift + S | Copy a screenshot to the clipboard |
-| Ctrl + R | Start / stop recording to MP4 |
-| Ctrl + I | Show / hide the stream info overlay |
-| F11 (Esc to leave) | Full screen |
-| Ctrl + Plus / Ctrl + Minus | Resize the window |
+| `Ctrl + H` | Màn hình chính (Home) |
+| `Ctrl + J` | Trình chuyển đổi ứng dụng (App Switcher) |
+| `Ctrl + B` | Quay lại (vuốt từ mép trái) |
+| `Ctrl + K` | Tìm kiếm Spotlight |
+| `Ctrl + N` | Trung tâm thông báo (Notification Center) |
+| `Ctrl + Shift + N` | Trung tâm điều khiển (Control Center) |
+| `Ctrl + L` | Khóa màn hình iPhone |
+| `Ctrl + V` | Nhập văn bản từ clipboard của PC vào ô đang chọn trên iPhone (tối đa 2000 ký tự) |
+| `Ctrl + Up` / `Ctrl + Down` | Tăng / giảm âm lượng iPhone |
+| `Ctrl + M` | Tắt / bật tiếng phát trên PC |
+| `Ctrl + U` | Bật / tắt điều khiển qua USB |
+| `Ctrl + S` | Lưu ảnh chụp màn hình (độ phân giải gốc của iPhone) |
+| `Ctrl + Shift + S` | Sao chép ảnh chụp màn hình vào clipboard |
+| `Ctrl + R` | Bắt đầu / dừng quay màn hình ra file MP4 |
+| `Ctrl + I` | Hiện / ẩn bảng thông số luồng phát |
+| `F11` (`Esc` để thoát) | Chế độ toàn màn hình |
+| `Ctrl + Plus` / `Ctrl + Minus` | Thay đổi kích thước cửa sổ |
 
-Home, App Switcher, Back, Spotlight, Notification Center, Control Center, Lock, Paste and
-iPhone volume act on the phone, so they only do something while control is ready. App Switcher swipes up from the bottom edge and holds on iPhones with
-Face ID, and double-presses Home on iPhones with a Home button.
+Các thao tác *Home, App Switcher, Back, Spotlight, Notification Center, Control Center, Lock, Paste* và *âm lượng iPhone* tác động trực tiếp lên điện thoại nên chỉ hoạt động khi điều khiển USB đã sẵn sàng. Với *App Switcher*, ứng dụng sẽ vuốt từ cạnh dưới lên và giữ đối với iPhone dùng Face ID, hoặc nhấn đúp nút Home đối với iPhone có nút Home vật lý.
 
-Ctrl + mouse wheel resizes in proportion to how far the wheel turns (about 6% per notch), so
-smooth scrolling with a touchpad resizes smoothly too.
+Tổ hợp `Ctrl` + con lăn chuột phóng to/thu nhỏ theo tỷ lệ quãng lăn (khoảng 6% mỗi khấc), nên thao tác cuộn mượt trên touchpad cũng thay đổi kích thước cửa sổ rất mượt.
 
-### Right-click menu
+### Menu chuột phải
 
-| Item | Action |
+| Mục menu | Tác dụng |
 |---|---|
-| Control iPhone (USB) | Turn control on or off (checkable) |
-| Set Up iPhone Control... | Checklist window that walks through the USB control setup (see below) |
-| Home, App Switcher, Back, Spotlight, Notification Center, Control Center, Lock Screen | Act on the iPhone (control on) |
-| Volume Up / Volume Down | Change the iPhone volume |
-| Paste PC Clipboard | Type the clipboard text on the iPhone |
-| Always on Top | Keep the window above other windows |
-| Sound | Play the iPhone sound on the PC |
-| Full Screen | Fill the screen (F11) |
-| Size | Small, Medium or Large |
-| Stream Quality | 720p / 1080p / 1440p and 30 / 60 fps; applies on the next connection |
-| Show Stream Info | Resolution, fps, bitrate, decoded and dropped frames |
-| Opacity | 100%, 90%, 75% or 50% |
-| Keep PC Awake While Mirroring | Stop Windows from sleeping while frames arrive (on by default) |
-| Start with Windows | Start in the tray at sign-in; the window shows when an iPhone connects |
-| Save Screenshot / Copy Screenshot | Save to `Pictures\PocketPane` / copy to the clipboard |
-| Record Screen | Record video and sound to `Videos\PocketPane` (MP4) |
-| Rename PC... | Change the name the iPhone shows under Screen Mirroring |
-| Visible in Screen Mirroring | Untick to hide this PC from iPhones (a running session continues) |
-| Open Media Folder | Open the folder of the last screenshot or recording |
-| Open Log | Open `%LOCALAPPDATA%\PocketPane\pocketpane.log` |
-| Quit | Exit the app |
+| `Control iPhone (USB)` | Bật hoặc tắt điều khiển iPhone (dạng đánh dấu chọn) |
+| `Set Up iPhone Control...` | Mở cửa sổ hướng dẫn và kiểm tra từng bước thiết lập điều khiển USB (xem bên dưới) |
+| `Home`, `App Switcher`, `Back`, `Spotlight`, `Notification Center`, `Control Center`, `Lock Screen` | Gửi thao tác tương ứng sang iPhone (khi đang bật điều khiển) |
+| `Volume Up` / `Volume Down` | Tăng / giảm âm lượng iPhone |
+| `Paste PC Clipboard` | Nhập nội dung clipboard trên PC sang iPhone |
+| `Always on Top` | Giữ cửa sổ luôn nổi trên các cửa sổ khác |
+| `Sound` | Phát âm thanh từ iPhone ra loa PC |
+| `Full Screen` | Chế độ toàn màn hình (`F11`) |
+| `Size` | Chọn kích thước cửa sổ: Small (Nhỏ), Medium (Vừa) hoặc Large (Lớn) |
+| `Stream Quality` | Chọn chất lượng 720p / 1080p / 1440p và 30 / 60 fps; có hiệu lực từ lần kết nối tiếp theo |
+| `Show Stream Info` | Hiển thị độ phân giải, fps, bitrate, số khung hình đã giải mã và bị rớt |
+| `Opacity` | Độ trong suốt của cửa sổ: 100%, 90%, 75% hoặc 50% |
+| `Keep PC Awake While Mirroring` | Ngăn Windows tự ngủ khi đang nhận hình (mặc định bật) |
+| `Start with Windows` | Khởi động ẩn dưới khay hệ thống khi đăng nhập Windows; tự hiện cửa sổ khi iPhone kết nối |
+| `Save Screenshot` / `Copy Screenshot` | Lưu ảnh vào `Pictures\PocketPane` / sao chép vào clipboard |
+| `Record Screen` | Quay video kèm âm thanh vào `Videos\PocketPane` (định dạng MP4) |
+| `Rename PC...` | Đổi tên máy tính hiển thị trong mục Screen Mirroring trên iPhone |
+| `Visible in Screen Mirroring` | Bỏ chọn để ẩn PC khỏi các thiết bị iPhone (phiên đang kết nối vẫn tiếp tục chạy) |
+| `Open Media Folder` | Mở thư mục chứa ảnh chụp hoặc video vừa quay |
+| `Open Log` | Mở file nhật ký `%LOCALAPPDATA%\PocketPane\pocketpane.log` |
+| `Quit` | Thoát ứng dụng |
 
-If the controller reports an error, the app shows it in a non-blocking message box titled
-**"iPhone control"** with the full text, and the status also appears in the top bar label.
+Nếu bộ điều khiển gặp lỗi, ứng dụng sẽ hiển thị hộp thoại thông báo không chặn giao diện mang tiêu đề **"iPhone control"** kèm nội dung chi tiết, đồng thời cập nhật trạng thái trên thanh công cụ phía trên.
 
-## USB control (optional)
+## Điều khiển qua USB (tùy chọn)
 
-AirPlay only carries picture and sound. To send taps and keystrokes back, PocketPane
-talks to [WebDriverAgent](https://github.com/appium/WebDriverAgent) (WDA), Appium's
-open-source automation server built on Apple's XCUITest, which runs as a small app on the
-phone. PocketPane starts it over USB with
-[pymobiledevice3](https://github.com/doronz88/pymobiledevice3). No Mac is needed, and on
-iOS 17.4 or later (and on iOS 16 or earlier) no administrator rights either. iOS 17.0 - 17.3
-can only be controlled with administrator rights: update the iPhone, or run
-`pymobiledevice3 remote tunneld` as administrator before you turn control on.
+Giao thức AirPlay chỉ truyền hình ảnh và âm thanh. Để gửi thao tác chạm và phím bấm ngược về điện thoại, PocketPane giao tiếp với [WebDriverAgent](https://github.com/appium/WebDriverAgent) (WDA) — máy chủ tự động hóa mã nguồn mở của Appium xây dựng trên XCUITest của Apple, chạy như một ứng dụng nhỏ trên iPhone. PocketPane khởi chạy WDA qua cáp USB bằng [pymobiledevice3](https://github.com/doronz88/pymobiledevice3). Bạn không cần máy Mac, và với iOS 17.4 trở lên (cũng như iOS 16 trở xuống) cũng không cần quyền Quản trị viên (Administrator). Riêng iOS 17.0 – 17.3 bắt buộc phải có quyền Administrator: hãy cập nhật iOS, hoặc chạy `pymobiledevice3 remote tunneld` dưới quyền Administrator trước khi bật điều khiển.
 
-**The easy way:** right-click the window > **Set Up iPhone Control...** (also offered as
-**Setup Guide** when starting control fails). It shows every step below with a green, orange
-or red light and what was found, re-checks by itself every few seconds while you work on the
-iPhone, and has buttons for the fixes: *Get Apple Devices*, *Show Developer Mode*, *Download
-WebDriverAgent* (shows the .ipa in Explorer), *Open Sideloadly* and finally *Turn on control*.
-It also reads when WebDriverAgent's signature expires (free Apple IDs: 7 days); when control
-starts within 2 days of that, a notification reminds you to install it again.
+**Cách thiết lập nhanh nhất:** nhấp chuột phải vào cửa sổ > **Set Up iPhone Control...** (hoặc bấm nút **Setup Guide** khi bật điều khiển báo lỗi). Cửa sổ này hiển thị danh sách từng bước dưới đây kèm đèn trạng thái xanh, cam hoặc đỏ và thông tin chi tiết, tự động kiểm tra lại sau mỗi vài giây trong lúc bạn thao tác trên điện thoại, đồng thời cung cấp sẵn các nút bấm hỗ trợ: *Get Apple Devices*, *Get iTunes* (cho Windows bản cũ), *Show Developer Mode*, *Download WebDriverAgent* (mở sẵn file `.ipa` trong Explorer), *Open Sideloadly* và cuối cùng là *Turn on control*. Công cụ cũng tự đọc ngày hết hạn chữ ký của WebDriverAgent (Apple ID miễn phí có hạn 7 ngày); nếu bật điều khiển khi còn dưới 2 ngày là hết hạn, ứng dụng sẽ hiện thông báo nhắc bạn cài lại.
 
-The commands below run in a terminal (Command Prompt or PowerShell) opened in the repository
-folder. `control.bat` runs the helper with the app's own Python environment, so nothing has
-to be activated (it is the same as `python -m iphone_mirror.control ...` inside that
-environment).
+Nếu muốn thao tác thủ công bằng dòng lệnh, hãy mở Terminal (Command Prompt hoặc PowerShell) tại thư mục mã nguồn. File `control.bat` chạy trực tiếp bằng môi trường Python riêng của ứng dụng nên không cần kích hoạt thủ công (tương đương lệnh `python -m iphone_mirror.control ...` bên trong môi trường đó):
 
-1. **Connect the iPhone.** Install **iTunes from apple.com**, connect the iPhone with a
-   cable, unlock it and tap **Trust** when it asks about this computer.
-2. **Turn on Developer Mode.** Run
+1. **Kết nối iPhone.** Cài đặt **iTunes từ apple.com** (hoặc Apple Devices), cắm cáp kết nối iPhone với PC, mở khóa điện thoại và nhấn **Trust** (Tin cậy) khi được hỏi.
+2. **Bật Chế độ nhà phát triển (Developer Mode).** Chạy lệnh:
 
    ```bat
    control.bat reveal-dev-mode
    ```
 
-   This makes the Developer Mode switch appear on the phone (it also appears by itself once
-   WebDriverAgent is installed in step 4). Then on the iPhone go to
-   Settings > Privacy & Security > **Developer Mode**, turn it on and confirm. The phone
-   restarts; after the restart, unlock it and confirm **Turn On** once more.
-3. **Get WebDriverAgent.** Run
+   Lệnh này làm hiện tùy chọn Developer Mode trong phần Cài đặt của iPhone (tùy chọn này cũng tự xuất hiện sau khi cài WebDriverAgent ở bước 4). Trên iPhone, vào *Settings > Privacy & Security > **Developer Mode*** (Cài đặt > Quyền riêng tư & Bảo mật > Chế độ nhà phát triển), gạt bật và xác nhận. Điện thoại sẽ khởi động lại; sau khi mở khóa, hãy xác nhận **Turn On** thêm một lần nữa.
+3. **Tải WebDriverAgent.** Chạy lệnh:
 
    ```bat
    control.bat get-wda
    ```
 
-   It downloads Appium's prebuilt WebDriverAgent and saves it as
-   `WebDriverAgentRunner.ipa` in your `Downloads` folder.
-4. **Install it on the iPhone.** Open [Sideloadly](https://sideloadly.io), select the iPhone
-   and `WebDriverAgentRunner.ipa`, enter your Apple ID and start. Sideloadly signs the app
-   with your Apple ID and installs it. With a **free** Apple ID the signature is valid for
-   **7 days**: after that, install it again with Sideloadly (paid developer accounts last a
-   year).
-5. **Trust the developer profile.** On the iPhone go to Settings > General >
-   **VPN & Device Management**, tap your Apple ID under "Developer App" and tap **Trust**.
-6. **Check everything.** Run
+   Lệnh sẽ tải bản WebDriverAgent dựng sẵn của Appium và lưu thành `WebDriverAgentRunner.ipa` trong thư mục `Downloads` của bạn.
+4. **Cài đặt lên iPhone.** Mở [Sideloadly](https://sideloadly.io), chọn iPhone của bạn và file `WebDriverAgentRunner.ipa`, nhập Apple ID rồi nhấn Start. Sideloadly sẽ ký ứng dụng bằng Apple ID của bạn và cài vào máy. Với Apple ID **miễn phí**, chữ ký có hiệu lực trong **7 ngày**: hết hạn này bạn chỉ cần cài đè lại qua Sideloadly (tài khoản Apple Developer trả phí có hạn 1 năm).
+5. **Tin cậy hồ sơ nhà phát triển.** Trên iPhone, vào *Settings > General > **VPN & Device Management*** (Cài đặt > Cài đặt chung > Quản lý VPN & thiết bị), chạm vào Apple ID của bạn dưới mục "Developer App" rồi chọn **Trust** (Tin cậy).
+6. **Kiểm tra tổng thể.** Chạy lệnh:
 
    ```bat
    control.bat doctor
    ```
 
-   and fix whatever it reports until all checks pass.
-7. **Turn control on.** In the PocketPane window press **Ctrl + U**, click the hand
-   button in the top bar, or right-click > **Control iPhone (USB)**. The button pulses orange
-   while WDA starts (the first time also downloads and mounts the Developer Disk Image, which
-   can take a minute) and turns green when it is ready.
+   và xử lý các mục còn báo lỗi cho đến khi tất cả đều đạt.
+7. **Bật điều khiển.** Trong cửa sổ PocketPane, nhấn **Ctrl + U**, bấm vào biểu tượng bàn tay trên thanh công cụ, hoặc nhấp chuột phải > **Control iPhone (USB)**. Nút bấm sẽ nhấp nháy màu cam trong lúc khởi động WDA (lần đầu tiên sẽ tải và gắn thêm Developer Disk Image nên có thể mất khoảng một phút) và chuyển sang màu xanh lá khi sẵn sàng.
 
-WebDriverAgent listens on port 8100 of the iPhone, and that port is reachable over Wi-Fi as
-well as through the USB forward. When you turn control on, the app first looks for a WDA
-that is already running, both on the USB forward and on the iPhone's Wi-Fi address, and only
-starts a new one over USB if it finds none. So once WDA is up, control traffic can go over
-Wi-Fi too. Keep the cable connected anyway while you work: WDA lives only as long as the test
-session that launched it, and unplugging the cable usually ends that session.
+WebDriverAgent lắng nghe trên cổng `8100` của iPhone, có thể truy cập được qua cả Wi-Fi lẫn đường truyền chuyển tiếp USB (USB forward). Khi bạn bật điều khiển, ứng dụng sẽ ưu tiên tìm phiên WDA đang chạy sẵn (qua cả USB forward lẫn địa chỉ Wi-Fi của iPhone), và chỉ khởi chạy phiên mới qua USB nếu chưa có. Nhờ vậy, khi WDA đã chạy, dữ liệu điều khiển có thể đi qua Wi-Fi. Tuy nhiên bạn vẫn nên giữ cáp cắm trong quá trình sử dụng, vì vòng đời của WDA gắn liền với phiên XCUITest đã khởi chạy nó — rút cáp thường sẽ làm kết thúc phiên này.
 
-### Helper commands
+### Các lệnh hỗ trợ
 
-`control.bat COMMAND` (or `python -m iphone_mirror.control COMMAND`; add `--help` to any
-command for its options):
+Cú pháp: `control.bat LỆNH` (hoặc `python -m iphone_mirror.control LỆNH`; thêm `--help` sau bất kỳ lệnh nào để xem chi tiết tùy chọn):
 
-| Command | What it does |
+| Lệnh | Chức năng |
 |---|---|
-| `doctor` | Check everything USB control needs, including when the WebDriverAgent signature expires (`--ip ADDRESS` also checks WDA over Wi-Fi) |
-| `reveal-dev-mode` | Make the Developer Mode switch appear in the iPhone's Settings |
-| `get-wda` | Download WebDriverAgent as `WebDriverAgentRunner.ipa` (`--out PATH` to save it elsewhere) |
-| `start` | Start WebDriverAgent over USB without the app and keep it running until Ctrl+C |
-| `tap X Y` | Tap at X, Y (in points) on a running WDA |
-| `home` | Go to the Home Screen |
-| `type TEXT` | Type TEXT into the focused field (`\n` = Return, `\b` = Backspace) |
+| `doctor` | Kiểm tra toàn bộ điều kiện cần thiết cho điều khiển USB, bao gồm thời hạn chữ ký WebDriverAgent (thêm `--ip ĐỊA_CHỈ` để kiểm tra cả kết nối WDA qua Wi-Fi) |
+| `reveal-dev-mode` | Làm xuất hiện mục bật Developer Mode trong Cài đặt của iPhone |
+| `get-wda` | Tải WebDriverAgent về dưới tên `WebDriverAgentRunner.ipa` (dùng `--out ĐƯỜNG_DẪN` nếu muốn lưu ở nơi khác) |
+| `start` | Khởi chạy WebDriverAgent qua USB độc lập (không cần mở giao diện chính) và giữ chạy cho tới khi nhấn `Ctrl+C` |
+| `tap X Y` | Chạm vào tọa độ `X, Y` (đơn vị point) trên phiên WDA đang chạy |
+| `home` | Trở về màn hình chính (Home Screen) |
+| `type TEXT` | Gõ chuỗi `TEXT` vào ô nhập liệu đang chọn (`\n` = Enter, `\b` = Backspace) |
 
-`tap`, `home` and `type` talk to `http://127.0.0.1:8100` unless you pass `--url`.
+Các lệnh `tap`, `home` và `type` mặc định gửi tới `http://127.0.0.1:8100` trừ khi bạn chỉ định `--url`.
 
-## Troubleshooting
+## Xử lý sự cố
 
-**The PC does not appear under Screen Mirroring**
+**Không thấy tên PC trong mục Screen Mirroring trên iPhone**
 
-- The Wi-Fi network must be **Private** in Windows (see [Usage](#usage)).
-- Python must be allowed through the firewall on private networks: Start > "Allow an app
-  through Windows Firewall" > find `pythonw.exe` / `python.exe` and tick **Private**.
-- The iPhone and the PC must be on the same network and subnet. Guest networks and routers
-  with "client isolation" / "AP isolation" block devices from seeing each other. A VPN on
-  either device can do the same.
-- Restart the app; it announces itself again with mDNS when it starts.
+- Mạng Wi-Fi trên Windows phải được đặt ở chế độ **Private** (xem mục [Cách sử dụng](#cách-sử-dụng)).
+- Python phải được phép đi qua tường lửa trên mạng Private: mở Start > gõ *"Allow an app through Windows Firewall"* > tìm `pythonw.exe` / `python.exe` và tích chọn cột **Private**.
+- iPhone và PC phải nằm cùng mạng và cùng dải subnet. Mạng Wi-Fi khách (Guest) hoặc router bật tính năng "Client Isolation" / "AP Isolation" sẽ chặn các thiết bị nhìn thấy nhau. Bật VPN trên một trong hai thiết bị cũng có thể gây hiện tượng tương tự.
+- Hãy thử khởi động lại ứng dụng để phát lại bản tin quảng bá mDNS.
 
-**"Could not decrypt the video"**
+**Thông báo lỗi "Could not decrypt the video"**
 
-Stop Screen Mirroring on the iPhone and connect again. If it keeps happening, open the log
-(right-click > **Open Log**) and attach it to an issue.
+Tắt phản chiếu màn hình trên iPhone rồi kết nối lại. Nếu lỗi vẫn lặp lại, hãy mở file log (nhấp chuột phải > **Open Log**) và đính kèm khi gửi báo lỗi (issue).
 
-**"iPhone is locked"**
+**Thông báo "iPhone is locked"**
 
-Unlock the iPhone; mirroring continues on its own.
+Chỉ cần mở khóa iPhone, hình ảnh phản chiếu sẽ tự động tiếp tục.
 
-**No sound**
+**Không có âm thanh**
 
-Check that **Sound** is ticked in the right-click menu (or press Ctrl + M) and that Windows
-plays to the right output device. The iPhone's own volume buttons also control the level.
+Kiểm tra xem mục **Sound** trong menu chuột phải đã được tích chọn chưa (hoặc nhấn `Ctrl + M`), đồng thời kiểm tra thiết bị đầu ra âm thanh của Windows. Nút âm lượng trên thân máy iPhone cũng điều chỉnh trực tiếp mức âm lượng phát ra.
 
-**Control does not start or stops working**
+**Không bật được điều khiển hoặc điều khiển ngừng hoạt động**
 
-- Run `control.bat doctor` (see [USB control](#usb-control-optional)) and fix what it
-  reports. The error box titled "iPhone control" shows the same message.
-- A free Apple ID signature expires after 7 days: if WDA suddenly fails to launch, install
-  `WebDriverAgentRunner.ipa` again with Sideloadly.
-- "Untrusted Developer" on the phone: trust the profile in Settings > General >
-  VPN & Device Management.
-- Logs are in `%LOCALAPPDATA%\PocketPane\*.log`: `pocketpane.log` for the app and
-  `wda_runner.log` / `wda_forward.log` for the WebDriverAgent processes.
+- Chạy lệnh `control.bat doctor` (hoặc mở **Set Up iPhone Control...**, xem mục [Điều khiển qua USB](#điều-khiển-qua-usb-tùy-chọn)) và khắc phục theo hướng dẫn. Hộp thoại lỗi "iPhone control" cũng hiển thị thông báo tương tự.
+- Chữ ký bằng Apple ID miễn phí sẽ hết hạn sau 7 ngày: nếu WDA đột ngột không thể khởi chạy, hãy cài đặt lại `WebDriverAgentRunner.ipa` bằng Sideloadly.
+- Nếu điện thoại báo "Untrusted Developer" (Nhà phát triển chưa được tin cậy): hãy vào *Settings > General > VPN & Device Management* để bấm **Trust**.
+- Các file nhật ký nằm tại `%LOCALAPPDATA%\PocketPane\*.log`: gồm `pocketpane.log` cho ứng dụng chính và `wda_runner.log` / `wda_forward.log` cho các tiến trình WebDriverAgent.
 
-## Limitations
+## Giới hạn
 
-- **Protected content is not mirrored.** Apps that use DRM (Netflix, Apple TV and similar)
-  show a black screen. The iPhone decides this, not the receiver.
-- **Resolution.** The iPhone is asked for a stream 1080 pixels high by default. To try a
-  sharper picture, quit the app, set `"height": 1440` in
-  `%LOCALAPPDATA%\PocketPane\settings.json` and start it again. If the iPhone stops
-  connecting, change it back to `1080`.
-- **Control latency.** Every action is an HTTP request to WebDriverAgent, so expect about
-  100-200 ms before the iPhone reacts. A single click waits about 0.2 s more, to tell it
-  from a double-click.
-- **No live drag.** Swipes are sent when you release the mouse button, so you cannot drag
-  an item and watch it follow the pointer, or draw.
-- **Control needs setup.** It requires a cable, Developer Mode and a sideloaded WDA that
-  has to be re-signed every 7 days with a free Apple ID.
+- **Không phản chiếu được nội dung có bảo vệ bản quyền (DRM).** Các ứng dụng sử dụng DRM (như Netflix, Apple TV,...) sẽ hiển thị màn hình đen. Đây là cơ chế chặn từ phía iPhone chứ không phải do phần mềm nhận.
+- **Độ phân giải.** Mặc định ứng dụng yêu cầu luồng hình cao 1080 pixel từ iPhone. Để thử hình ảnh sắc nét hơn, bạn có thể chọn trong menu *Stream Quality* hoặc thoát ứng dụng, đặt `"height": 1440` trong `%LOCALAPPDATA%\PocketPane\settings.json` rồi mở lại. Nếu iPhone không kết nối được ở mức này, hãy đưa về lại `1080`.
+- **Độ trễ điều khiển.** Mỗi thao tác điều khiển là một truy vấn HTTP gửi tới WebDriverAgent nên sẽ có độ trễ khoảng 100–200 ms trước khi iPhone phản hồi. Cú nhấp chuột đơn cũng chờ thêm khoảng 0,2 giây để phân biệt với nhấp đúp.
+- **Không hỗ trợ kéo theo thời gian thực (live drag).** Cử chỉ vuốt chỉ được gửi đi sau khi bạn nhả nút chuột, do đó bạn không thể vừa kéo một biểu tượng vừa nhìn nó di chuyển theo con trỏ chuột, hoặc dùng để vẽ tay trực tiếp.
+- **Điều khiển cần bước thiết lập ban đầu.** Yêu cầu cắm cáp USB, bật Developer Mode và cài đặt WDA qua Sideloadly (cần ký lại mỗi 7 ngày nếu dùng Apple ID miễn phí).
 
-## Recording
+## Quay màn hình
 
-Ctrl+R (or right-click > Record Screen) records the mirrored screen and its sound to
-`Videos\PocketPane\iPhone <date> <time>.mp4`. The top bar shows `REC m:ss`, and a red dot
-stays in the corner while the bar is hidden. Press Ctrl+R again to finish the file; a
-notification shows where it was saved (click it to open the folder). `--record` starts
-recording at launch.
+Nhấn `Ctrl+R` (hoặc nhấp chuột phải > **Record Screen**) để ghi lại màn hình đang phản chiếu cùng âm thanh vào `Videos\PocketPane\iPhone <ngày> <giờ>.mp4`. Thanh công cụ phía trên sẽ hiện `REC m:ss`, và khi thanh công cụ ẩn đi vẫn có một chấm đỏ nhỏ ở góc cửa sổ. Nhấn `Ctrl+R` lần nữa để hoàn tất file quay; một thông báo sẽ cho biết đường dẫn lưu file (bấm vào thông báo để mở thư mục). Tham số `--record` cho phép tự động quay ngay khi mở ứng dụng.
 
-iOS sends a full key frame only when mirroring starts, so the recording re-encodes the
-decoded frames (H.264, libx264 "ultrafast", up to 30 fps) instead of copying the stream. If
-the PC is too slow to keep up, frames are skipped rather than delaying the mirror. When the
-iPhone rotates, the current file is finished and a new part `... (2).mp4` starts, because an
-MP4 video track cannot change its size.
+Do iOS chỉ gửi khung hình khóa (keyframe) đầy đủ lúc mới bắt đầu phản chiếu, bộ ghi hình sẽ mã hóa lại các khung hình đã giải mã (chuẩn H.264, `libx264` chế độ `"ultrafast"`, tối đa 30 fps) thay vì chép nguyên luồng gốc. Nếu cấu hình PC không theo kịp, một số khung hình ghi sẽ được bỏ qua để không làm trễ hình ảnh phản chiếu trực tiếp. Khi xoay ngang/dọc iPhone, file hiện tại sẽ được đóng lại an toàn và ứng dụng tự tách sang phần mới `... (2).mp4` vì một luồng video MP4 không thể đổi kích thước khung hình giữa chừng.
 
-## Settings
+## Thiết lập
 
-`%LOCALAPPDATA%\PocketPane\settings.json` is created on the first start. Useful keys:
+File cấu hình `%LOCALAPPDATA%\PocketPane\settings.json` được tạo tự động trong lần chạy đầu tiên. Các khóa cấu hình hữu ích:
 
-| Key | Default | Meaning |
+| Khóa | Mặc định | Ý nghĩa |
 |---|---|---|
-| `name` | computer name | Name shown on the iPhone under Screen Mirroring |
-| `width`, `height` | `1920`, `1080` | Stream size requested from the iPhone (the height decides the resolution) |
-| `fps` | `60` | Frame rate requested from the iPhone |
-| `audio` | `true` | Play the iPhone sound on the PC |
-| `always_on_top` | `false` | Keep the window above other windows |
-| `opacity` | `1.0` | Window opacity (0.3 - 1) |
-| `keep_awake` | `true` | Keep the PC awake while mirroring |
+| `name` | tên máy tính | Tên hiển thị trên iPhone trong danh sách Screen Mirroring |
+| `width`, `height` | `1920`, `1080` | Kích thước luồng video yêu cầu từ iPhone (`height` quyết định độ phân giải) |
+| `fps` | `60` | Tốc độ khung hình yêu cầu từ iPhone |
+| `audio` | `true` | Phát âm thanh của iPhone trên PC |
+| `always_on_top` | `false` | Giữ cửa sổ luôn nổi trên các cửa sổ khác |
+| `opacity` | `1.0` | Độ trong suốt của cửa sổ (`0.3` – `1.0`) |
+| `keep_awake` | `true` | Giữ PC không tự ngủ trong khi đang phản chiếu |
 
-The file also stores the window position and the receiver's identity (a random MAC address
-and an Ed25519 key). Delete the file to reset everything; the iPhone will then see a new
-receiver. On its first start PocketPane copies the settings of the original "iPhone Mirror"
-app (`%LOCALAPPDATA%\iPhoneMirror\settings.json`) if there are any, so the iPhone keeps
-seeing the same receiver.
+File này cũng lưu vị trí cửa sổ và danh tính của thiết bị nhận (địa chỉ MAC ngẫu nhiên cùng khóa Ed25519). Xóa file này sẽ đặt lại toàn bộ cài đặt về mặc định và iPhone sẽ coi PC như một thiết bị nhận mới. Trong lần khởi chạy đầu tiên, nếu tìm thấy cài đặt cũ của ứng dụng gốc "iPhone Mirror" (`%LOCALAPPDATA%\iPhoneMirror\settings.json`), PocketPane sẽ tự động sao chép sang để iPhone vẫn nhận diện quen thuộc như cũ.
 
-## How it works
+## Cơ chế hoạt động
 
-- **Discovery.** The app advertises `_airplay._tcp` and `_raop._tcp` services over mDNS
-  (python-zeroconf) with the TXT records of an Apple TV, so the iPhone lists the PC under
-  Screen Mirroring.
-- **Control connection.** An asyncio RTSP server on TCP port 7000 handles `GET /info`, then
-  AirPlay legacy pairing: `pair-setup` and `pair-verify` with Ed25519 signatures and an
-  X25519 key exchange.
-- **FairPlay.** `fp-setup` runs the FairPlay SAP handshake. A pure-Python port of the
-  open-source *playfair* code unwraps the 16-byte AES session key that the iPhone sends
-  FairPlay-encrypted during `SETUP`.
-- **Video.** The mirroring stream is H.264 over TCP, encrypted with AES-128-CTR. The key is
-  derived from the FairPlay key and the pair-verify shared secret. PyAV (FFmpeg) decodes it
-  on a background thread and scales frames to the window's size in device pixels.
-- **Audio.** AAC-ELD over RTP/UDP, encrypted with AES-CBC, decoded with PyAV and played with
-  sounddevice.
-- **Window.** PySide6 (Qt) draws a frameless, translucent, rounded window with the frame,
-  placeholders and controls.
-- **Control.** pymobiledevice3 finds the iPhone through usbmux, checks Developer Mode, mounts
-  the Developer Disk Image, launches WebDriverAgent as an XCUITest (on iOS 17+ through a
-  userspace tunnel) and forwards a local port to WDA's port 8100. Mouse and keyboard input
-  becomes WDA HTTP calls (taps, swipes, text, buttons).
+- **Quảng bá dịch vụ (Discovery).** Ứng dụng quảng bá dịch vụ `_airplay._tcp` và `_raop._tcp` qua giao thức mDNS (`python-zeroconf`) kèm các bản ghi TXT mô phỏng Apple TV, giúp iPhone hiển thị PC trong mục Screen Mirroring.
+- **Kết nối điều khiển phiên.** Máy chủ RTSP bất đồng bộ (`asyncio`) trên cổng TCP `7000` xử lý `GET /info`, sau đó thực hiện ghép đôi AirPlay (`pair-setup` và `pair-verify`) bằng chữ ký số Ed25519 và trao đổi khóa X25519.
+- **FairPlay.** Quá trình `fp-setup` thực hiện bắt tay FairPlay SAP. Một bản chuyển đổi thuần Python từ mã nguồn mở *playfair* sẽ giải bọc khóa phiên AES 16-byte được iPhone mã hóa FairPlay gửi sang trong bước `SETUP`.
+- **Video.** Luồng hình ảnh phản chiếu là H.264 truyền qua TCP, mã hóa bằng AES-128-CTR với khóa dẫn xuất từ khóa FairPlay và khóa chung `pair-verify`. PyAV (FFmpeg) giải mã ở luồng nền và co giãn khung hình khớp chính xác với kích thước điểm ảnh thực của cửa sổ.
+- **Âm thanh.** Chuẩn AAC-ELD truyền qua RTP/UDP, mã hóa AES-CBC, được giải mã bằng PyAV và phát ra loa qua thư viện `sounddevice`.
+- **Giao diện cửa sổ.** PySide6 (Qt) vẽ cửa sổ không viền, nền trong suốt, bo góc tròn cùng khung máy, màn hình chờ và thanh nút bấm điều khiển.
+- **Điều khiển USB.** `pymobiledevice3` tìm iPhone qua `usbmux`, kiểm tra Developer Mode, gắn Developer Disk Image, khởi chạy WebDriverAgent dưới dạng bài kiểm thử XCUITest (trên iOS 17+ đi qua userspace tunnel) và chuyển tiếp một cổng nội bộ trên PC vào cổng `8100` của WDA. Thao tác chuột và bàn phím được chuyển thành các lời gọi HTTP tới WDA (chạm, vuốt, nhập chữ, bấm nút cứng).
 
-## Development
+## Phát triển
 
-Use the app's environment (`%LOCALAPPDATA%\PocketPane\venv\Scripts\python.exe`) or any
-Python 3.11+ with `requirements.txt` installed, and run everything from the repository
-folder.
+Sử dụng môi trường ảo của ứng dụng (`%LOCALAPPDATA%\PocketPane\venv\Scripts\python.exe`) hoặc bất kỳ bản Python 3.11+ nào đã cài `requirements.txt`, và chạy các lệnh từ thư mục gốc của kho mã nguồn:
 
 ```bat
-rem FairPlay known-answer tests (21 recorded sessions)
+rem Chạy bộ kiểm thử FairPlay (đối chiếu với 21 phiên ghi mẫu)
 python tests/test_fairplay.py
 
-rem WebDriverAgent client tests
+rem Kiểm thử client WebDriverAgent
 python tests/test_wda.py
 
-rem Full AirPlay session without an iPhone or a network:
-rem the receiver listens on 127.0.0.1:7100 only and does not announce itself
+rem Mô phỏng toàn bộ phiên AirPlay mà không cần iPhone thật hay mạng Wi-Fi:
+rem thiết bị nhận chỉ lắng nghe trên 127.0.0.1:7100 và không phát mDNS
 python -m iphone_mirror --local
-rem in a second window: a simulated iPhone that pairs, does FairPlay and streams
-rem an encrypted H.264 test pattern and an AAC tone (arguments: host port seconds)
+rem Mở cửa sổ dòng lệnh thứ hai: chạy iPhone giả lập thực hiện ghép đôi, FairPlay
+rem rồi truyền luồng video H.264 mã hóa cùng âm báo AAC (tham số: host port số_giây)
 python tools/fake_iphone.py 127.0.0.1 7100
 ```
 
-`--local` also skips the single-instance check and uses a separate settings file, so it can
-run next to a normal copy of the app. Other options:
+Cờ `--local` cũng bỏ qua kiểm tra chạy đơn phiên (single-instance) và dùng file cấu hình tách biệt, nhờ đó có thể chạy song song với ứng dụng PocketPane bình thường. Các tùy chọn dòng lệnh khác:
 
-| Option | Meaning |
+| Tùy chọn | Ý nghĩa |
 |---|---|
-| `--port N` | RTSP port (default 7000, or 7100 with `--local`) |
-| `--control` | Turn on iPhone control (USB / WebDriverAgent) at launch |
-| `--record` | Start recording to `Videos\PocketPane` at launch |
-| `--tray` | Start hidden in the notification area; the window shows when an iPhone connects |
-| `--grab DIR` | Save a PNG of the window every 2 seconds |
-| `--quit-after N` | Exit after N seconds |
+| `--port N` | Cổng RTSP (mặc định `7000`, hoặc `7100` khi dùng `--local`) |
+| `--control` | Tự động bật điều khiển iPhone (USB / WebDriverAgent) ngay khi mở |
+| `--record` | Tự động quay màn hình lưu vào `Videos\PocketPane` ngay khi mở |
+| `--tray` | Khởi động ẩn dưới khay hệ thống; chỉ hiện cửa sổ khi có iPhone kết nối |
+| `--grab DIR` | Lưu ảnh chụp PNG của cửa sổ mỗi 2 giây vào thư mục `DIR` |
+| `--quit-after N` | Tự động thoát sau `N` giây |
 
-### License keys
+### Khóa bản quyền
 
-The app asks for a license key at its first start and stores it in `settings.json`
-(`--local` needs none). Issue one with
+Ứng dụng yêu cầu nhập khóa kích hoạt (license key) trong lần mở đầu tiên và lưu vào `settings.json` (chế độ `--local` không yêu cầu khóa). Để tạo khóa mới, chạy lệnh:
 
 ```bat
-.venv\Scripts\python tools\make_key.py "Name" --days 365
+.venv\Scripts\python tools\make_key.py "Tên người dùng" --days 365
 ```
 
-(`--days` is optional; without it the key never expires). Keys are signed with the private
-key in `%USERPROFILE%\.pocketpane\signing.key`; the app only contains the matching public key
-(`PUBLIC_KEY` in `iphone_mirror/license.py`). Back that file up and keep it out of the
-repository. A key is not tied to one PC, and since the source is open the check can be
-removed by whoever has it.
+(tham số `--days` là tùy chọn; nếu bỏ qua, khóa sẽ có hiệu lực vĩnh viễn). Khóa được ký bằng khóa bí mật lưu tại `%USERPROFILE%\.pocketpane\signing.key`; ứng dụng chỉ chứa khóa công khai tương ứng (`PUBLIC_KEY` trong `iphone_mirror/license.py`). Hãy sao lưu file khóa bí mật này cẩn thận và không đưa vào kho mã nguồn. Khóa bản quyền không khóa cứng theo từng máy PC, và vì mã nguồn mở nên người nắm mã nguồn có thể gỡ bỏ bước kiểm tra này nếu muốn.
 
-### Standalone build
+### Đóng gói bản chạy độc lập
 
-`build.bat` packs the app with [PyInstaller](https://pyinstaller.org) into `dist\PocketPane`,
-a folder that runs on a PC without Python:
+Script `build.bat` đóng gói ứng dụng bằng [PyInstaller](https://pyinstaller.org) vào thư mục `dist\PocketPane` để chạy trực tiếp trên các máy tính không cài Python:
 
-- `PocketPane.exe`: the app (no console window),
-- `pocketpane-control.exe`: the control helper (same commands as `control.bat`); the app
-  also uses it to run pymobiledevice3,
-- `_internal\`: Python and the libraries.
+- `PocketPane.exe`: ứng dụng chính (không hiện cửa sổ console),
+- `pocketpane-control.exe`: công cụ dòng lệnh hỗ trợ điều khiển (cú pháp giống hệt `control.bat`); ứng dụng chính cũng gọi file này để chạy `pymobiledevice3`,
+- `_internal\`: chứa Python runtime và các thư viện đi kèm.
 
-It needs Python 3.11+ on PATH and creates its own environment in `.venv`. After building it
-checks that the Qt platform plugin and every pymobiledevice3 sub-command the app uses are in
-the build. The result is not signed and has no installer yet.
+Quá trình build yêu cầu có sẵn Python 3.11+ trong `PATH` và sẽ tự tạo môi trường riêng tại `.venv`. Sau khi đóng gói xong, script tự động kiểm tra sự hiện diện của plugin nền tảng Qt cũng như mọi lệnh con `pymobiledevice3` mà ứng dụng sử dụng. Bản build hiện chưa được ký số (code signing) và chưa kèm bộ cài đặt riêng.
 
-`tools/gen_fairplay.py` regenerates `iphone_mirror/fairplay/_tables.py` and `_garble.py` from
-the playfair C sources shipped with UxPlay:
+Công cụ `tools/gen_fairplay.py` dùng để sinh lại hai file `iphone_mirror/fairplay/_tables.py` và `_garble.py` từ mã nguồn C *playfair* đi kèm trong UxPlay:
 
 ```bat
-python tools/gen_fairplay.py path\to\UxPlay\lib
+python tools/gen_fairplay.py duong\dan\toi\UxPlay\lib
 ```
 
-### Project layout
+### Cấu trúc thư mục
 
-| Path | Contents |
+| Đường dẫn | Nội dung |
 |---|---|
-| `iphone_mirror/airplay.py` | RTSP server, session setup, `Receiver` |
-| `iphone_mirror/pairing.py` | Legacy pair-setup / pair-verify |
-| `iphone_mirror/fairplay/` | Pure-Python FairPlay SAP (playfair port) |
-| `iphone_mirror/video.py` | Mirror stream decryption and H.264 decoding |
-| `iphone_mirror/audio.py` | RTP audio decryption, decoding and playback |
-| `iphone_mirror/discovery.py` | mDNS advertisement |
-| `iphone_mirror/config.py` | Settings and receiver identity |
-| `iphone_mirror/ui.py` | The iPhone-shaped window |
-| `iphone_mirror/record.py` | Screen recording to MP4 |
-| `iphone_mirror/autostart.py` | Start with Windows (`HKCU\...\Run` value, kept up to date if the folder moves) |
-| `pocketpane.pyw` | Console-less launcher that works from any folder (used by Start with Windows) |
-| `iphone_mirror/control/` | WebDriverAgent client, USB bring-up and the setup checks (`setup.py`) |
-| `iphone_mirror/setup_window.py` | The Set Up iPhone Control checklist window |
-| `build.bat`, `pocketpane.spec`, `pocketpane_control.py` | Standalone build (PyInstaller) and its console entry |
-| `tests/` | FairPlay, WDA, recording and window tests (`python -m pytest tests`) |
-| `tools/` | Simulated iPhone, FairPlay table generator, paint and decode benchmarks |
+| `iphone_mirror/airplay.py` | Máy chủ RTSP, thiết lập phiên kết nối, lớp `Receiver` |
+| `iphone_mirror/pairing.py` | Ghép đôi AirPlay (`pair-setup` / `pair-verify`) |
+| `iphone_mirror/fairplay/` | Giao thức FairPlay SAP thuần Python (chuyển từ *playfair*) |
+| `iphone_mirror/video.py` | Giải mã luồng phản chiếu và giải mã video H.264 |
+| `iphone_mirror/audio.py` | Giải mã âm thanh RTP, giải mã AAC và phát ra loa |
+| `iphone_mirror/discovery.py` | Quảng bá dịch vụ qua mDNS |
+| `iphone_mirror/config.py` | Quản lý cấu hình và danh tính thiết bị nhận |
+| `iphone_mirror/ui.py` | Giao diện cửa sổ hình chiếc iPhone |
+| `iphone_mirror/record.py` | Ghi màn hình và âm thanh ra file MP4 |
+| `iphone_mirror/autostart.py` | Khởi động cùng Windows (khóa registry `HKCU\...\Run`, tự cập nhật khi đổi chỗ thư mục) |
+| `pocketpane.pyw` | Trình khởi chạy không console hoạt động từ mọi thư mục (dùng cho Start with Windows) |
+| `iphone_mirror/control/` | Client WebDriverAgent, khởi chạy qua USB và kiểm tra thiết lập (`setup.py`) |
+| `iphone_mirror/setup_window.py` | Cửa sổ hướng dẫn từng bước *Set Up iPhone Control* |
+| `build.bat`, `pocketpane.spec`, `pocketpane_control.py` | Đóng gói bản chạy độc lập (PyInstaller) và điểm vào console |
+| `tests/` | Bộ kiểm thử FairPlay, WDA, ghi hình và giao diện (`python -m pytest tests`) |
+| `tools/` | Giả lập iPhone, trình tạo bảng FairPlay, công cụ đo hiệu năng vẽ và giải mã |
 
-## Credits
+## Ghi nhận đóng góp
 
-- [UxPlay](https://github.com/FDH2/UxPlay), [RPiPlay](https://github.com/FD-/RPiPlay) and
-  [shairplay](https://github.com/juhovh/shairplay), and the authors of the *playfair*
-  FairPlay code they ship. The protocol handling here was checked against UxPlay.
-- [pymobiledevice3](https://github.com/doronz88/pymobiledevice3) for talking to the iPhone
-  over USB.
-- [Appium WebDriverAgent](https://github.com/appium/WebDriverAgent) for input on the iPhone.
-- [PyAV](https://github.com/PyAV-Org/PyAV) and FFmpeg for decoding.
-- [PySide6](https://doc.qt.io/qtforpython-6/) (Qt for Python) for the window.
-- [python-zeroconf](https://github.com/python-zeroconf/python-zeroconf) for mDNS.
-- The FairPlay test vectors come from
-  [openairplay/airplay2-receiver](https://github.com/openairplay/airplay2-receiver) and
-  [omarroth/doubletake](https://github.com/omarroth/doubletake).
+- [UxPlay](https://github.com/FDH2/UxPlay), [RPiPlay](https://github.com/FD-/RPiPlay) và [shairplay](https://github.com/juhovh/shairplay), cùng các tác giả của bộ mã FairPlay *playfair* đi kèm trong các dự án đó. Việc xử lý giao thức tại đây được đối chiếu kỹ với UxPlay.
+- [pymobiledevice3](https://github.com/doronz88/pymobiledevice3) hỗ trợ giao tiếp với iPhone qua kết nối USB.
+- [Appium WebDriverAgent](https://github.com/appium/WebDriverAgent) hỗ trợ gửi thao tác điều khiển trên iPhone.
+- [PyAV](https://github.com/PyAV-Org/PyAV) và FFmpeg phục vụ giải mã và xử lý đa phương tiện.
+- [PySide6](https://doc.qt.io/qtforpython-6/) (Qt for Python) xây dựng giao diện cửa sổ.
+- [python-zeroconf](https://github.com/python-zeroconf/python-zeroconf) xử lý quảng bá mDNS.
+- Các vector kiểm thử FairPlay được lấy từ [openairplay/airplay2-receiver](https://github.com/openairplay/airplay2-receiver) và [omarroth/doubletake](https://github.com/omarroth/doubletake).
 
-## License
+## Giấy phép
 
-[GPL-3.0](LICENSE). The `iphone_mirror/fairplay/` module is a port of the GPL-3.0 playfair
-code (see [licenses/playfair-LICENSE.md](licenses/playfair-LICENSE.md)), so the whole
-application is distributed under the GPL-3.0.
+Phân phối theo giấy phép [GPL-3.0](LICENSE). Mô-đun `iphone_mirror/fairplay/` được chuyển thể từ mã nguồn *playfair* mang giấy phép GPL-3.0 (xem [licenses/playfair-LICENSE.md](licenses/playfair-LICENSE.md)), do đó toàn bộ ứng dụng được phát hành theo giấy phép GPL-3.0.
 
-## Disclaimer
+## Miễn trừ trách nhiệm
 
-This project is not affiliated with, endorsed by, or sponsored by Apple Inc. AirPlay,
-iPhone, FairPlay and iOS are trademarks of Apple Inc., registered in the U.S. and other
-countries. Use it only with devices and content you are allowed to mirror.
+Dự án này không liên kết, không được chứng nhận hay tài trợ bởi Apple Inc. AirPlay, iPhone, FairPlay và iOS là các nhãn hiệu thương mại của Apple Inc., đã đăng ký tại Hoa Kỳ và các quốc gia khác. Chỉ sử dụng phần mềm với thiết bị và nội dung mà bạn có quyền phản chiếu hợp pháp.
